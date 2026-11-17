@@ -210,7 +210,8 @@ if (bay) {
   if (flowData) {
     const slider = $('flow-time'), label = $('flow-label'), playBtn = $('flow-play');
     $('flow-toggle').hidden = false; $('flow-panel').hidden = false;
-    const flow = new FlowLayer(map, flowData, { onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
+    // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label
+    const flow = new FlowLayer(map, flowData, { beforeId: 'road', onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
     map.once('idle', () => flow.still());

@@ -89,7 +89,7 @@ html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink
 .planner .row { gap: 6px; justify-content: flex-start; }
 body.planning #map canvas { cursor: crosshair; }
 
-.flow-canvas { position: absolute; inset: 0; pointer-events: none; }
+
 .flow-panel {
   position: absolute; z-index: 3; bottom: 34px; left: 50%; transform: translateX(-50%);
   display: flex; gap: 10px; align-items: center; background: rgba(255,255,255,0.95);

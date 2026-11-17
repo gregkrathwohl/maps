@@ -15,7 +15,7 @@ import numpy as np, netCDF4
 place = sys.argv[1] if len(sys.argv) > 1 else 'richardson-bay'
 root = os.path.join(os.path.dirname(__file__), '..', 'places', place)
 cfg = json.load(open(os.path.join(root, 'place.json')))
-w, s, e, n = cfg['bbox']
+w, s, e, n = cfg.get('currents', {}).get('bbox', cfg['bbox'])  # currents may reach past the map (whole Golden Gate)
 BUCKET = 'https://noaa-nos-ofs-pds.s3.amazonaws.com'
 CELL = cfg.get('currents', {}).get('cell', 100)  # metres
 
@@ -66,7 +66,7 @@ for k in keys:
     U.append(np.round(gu * 100).astype(int).tolist()); V.append(np.round(gv * 100).astype(int).tolist())
     print(times[-1], k.split('.')[-2], f'max {np.hypot(gu, gv).max():.2f} m/s', flush=True)
 
-out = {'source': f'NOAA SFBOFS {day} {run}', 'bbox': cfg['bbox'], 'nx': nx, 'ny': ny, 'cell': CELL,
+out = {'source': f'NOAA SFBOFS {day} {run}', 'bbox': [w, s, e, n], 'nx': nx, 'ny': ny, 'cell': CELL,
        'units': 'cm/s', 'mask': valid.astype(int).tolist(), 'times': times, 'u': U, 'v': V,
        'nowcast': sum(bool(re.search(r'fields\.n\d', k)) for k in keys)}
 json.dump(out, open(os.path.join(root, 'data', 'currents-sfbofs.json'), 'w'), separators=(',', ':'))
