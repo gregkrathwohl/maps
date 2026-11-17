@@ -15,5 +15,12 @@
   -122.528,
   37.845
  ],
- "zoom": 13.3
+ "zoom": 13.3,
+ "org": "Golden Gate National Recreation Area",
+ "areas": [
+  "Hawk Hill",
+  "Rodeo Beach & Fort Cronkhite",
+  "Tennessee Valley",
+  "Muir Beach"
+ ]
 }

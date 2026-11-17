@@ -28,8 +28,13 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
   const hw = (...v) => ['match', ['get', 'highway'], v, true, false];
   const notHand = ['!', ['in', ['coalesce', ['get', 'name'], ''], ['literal', handNames]]];
 
+  // roads closed to private cars (Angel Island's Perimeter Road, park fire roads) read as trails
+  const carFree = ['all',
+    hw('unclassified', 'service', 'residential', 'tertiary'),
+    ['match', ['coalesce', ['get', 'motor_vehicle'], ''], ['no', 'private'], true, false],
+    ['!=', ['get', 'foot'], 'no']];
   const trailFilter = ['all',
-    hw('path', 'footway', 'bridleway', 'track', 'steps', 'cycleway'),
+    ['any', hw('path', 'footway', 'bridleway', 'track', 'steps', 'cycleway'), carFree],
     ['!', ['match', ['coalesce', ['get', 'footway'], ''], ['sidewalk', 'crossing', 'access_aisle'], true, false]],
     ['==', ['geometry-type'], 'LineString'],
   ];
@@ -90,15 +95,17 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       filter: ['all', ['has', 'building'], ['==', ['geometry-type'], 'Polygon']],
       paint: { 'fill-color': c.building } },
     { id: 'battery', type: 'fill', source: 'osm', minzoom: minz(13),
-      filter: ['match', ['coalesce', ['get', 'historic'], ''], ['fort', 'military'], true, false],
+      // only gun batteries / bunkers get the fill; big historic districts (garrisons, coves) stay open
+      filter: ['all', ['match', ['coalesce', ['get', 'historic'], ''], ['fort', 'military'], true, false],
+        ['any', ['has', 'building'], ['in', 'Battery', ['coalesce', ['get', 'name'], '']]]],
       paint: { 'fill-color': '#bfb8a6', 'fill-outline-color': '#8c8270' } },
 
     // roads: Ipswich uses plain dark lines, no casings, weight by class
     { id: 'road-service', type: 'line', source: 'osm', minzoom: minz(13),
-      filter: ['all', hw('service'), ['!=', ['get', 'service'], 'parking_aisle']],
+      filter: ['all', hw('service'), ['!=', ['get', 'service'], 'parking_aisle'], ['!', carFree]],
       layout: { 'line-cap': 'round' }, paint: { 'line-color': c.service, 'line-width': W(0.7) } },
     { id: 'road-street', type: 'line', source: 'osm',
-      filter: hw('residential', 'unclassified', 'living_street', 'tertiary'),
+      filter: ['all', hw('residential', 'unclassified', 'living_street', 'tertiary'), ['!', carFree]],
       layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': c.street, 'line-width': W(1.2) } },
     { id: 'road-main', type: 'line', source: 'osm',
       filter: hw('primary', 'secondary', 'primary_link', 'secondary_link'),
@@ -114,7 +121,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
     { id: 'trail', type: 'line', source: 'osm', minzoom: minz(11),
       filter: ['all', trailFilter, ['!', informal]],
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': c.trail, 'line-width': W(1.7, ['match', ['get', 'highway'], 'track', 1.25, 'steps', 0.7, 1]) } },
+      paint: { 'line-color': c.trail, 'line-width': W(1.7, ['case', carFree, 1.3, ['match', ['get', 'highway'], 'track', 1.25, 'steps', 0.7, 1]]) } },
     { id: 'trail-informal', type: 'line', source: 'osm', minzoom: minz(13),
       filter: ['all', trailFilter, informal],
       paint: { 'line-color': c.trail, 'line-width': W(1.2), 'line-dasharray': [2.5, 1.5] } },
@@ -140,7 +147,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
         'text-size': T(10), 'symbol-spacing': 350, 'text-offset': [0, -0.75] },
       paint: { 'text-color': '#7f2a31', 'text-halo-color': 'rgba(251,250,246,0.75)', 'text-halo-width': 1.2 } },
     { id: 'road-label', type: 'symbol', source: 'osm', minzoom: minz(13),
-      filter: ['all', hw('primary', 'secondary', 'tertiary', 'residential', 'unclassified'), ['has', 'name']],
+      filter: ['all', hw('primary', 'secondary', 'tertiary', 'residential', 'unclassified'), ['has', 'name'], ['!', carFree]],
       layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT.regular,
         'text-size': T(10.5), 'symbol-spacing': 500, 'text-offset': [0, -0.8] },
       paint: { 'text-color': c.ink, 'text-halo-color': 'rgba(251,250,246,0.6)', 'text-halo-width': 1 } },

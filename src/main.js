@@ -15,7 +15,10 @@ const [cfg, osm, labels] = await Promise.all([
   fetch(`${base}/labels.json`).then(r => (r.ok ? r.json() : [])),
 ]);
 document.title = `${cfg.name} ${cfg.subtitle}`;
-document.getElementById('title').textContent = cfg.name;
+document.getElementById('title').textContent = cfg.title || cfg.name;
+document.getElementById('subtitle').textContent = cfg.subtitle || 'Trails Guide';
+document.getElementById('org').textContent = cfg.org || '';
+document.getElementById('areas').innerHTML = (cfg.areas || []).map(a => `<li>${a}</li>`).join('');
 
 const names = cfg.boundaries || [cfg.name];
 const boundaries = osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
@@ -38,7 +41,8 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 });
 
 const state = { mode: 'web', hillshade: false };
-const handNames = labels.map(l => l.text.replace(/\n/g, ' '));
+// OSM labels to suppress: anything a hand label already covers (or says it replaces)
+const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => buildStyle({ c, osm, mask, contourTiles: contourTiles(state.mode), mode: state.mode,
   designZoom, hillshade: state.hillshade, handNames });
 

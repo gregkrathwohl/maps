@@ -1,5 +1,5 @@
 :root {
-  --paper: #fbfaf6; --frame: #9b2f35; --ink: #1f1f1f; --sage: #d1d9ca; --loc: #366f53;
+  --paper: #fbfaf6; --frame: #1f1f1f; --accent: #9b2f35; --ink: #1f1f1f; --sage: #d1d9ca; --loc: #366f53;
   --serif: "EB Garamond", Georgia, serif; --sans: "Source Sans 3", Helvetica, Arial, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -9,12 +9,12 @@ html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink
 /* the guide's thin red-ruled panels */
 .title-panel, .key {
   position: absolute; z-index: 2; background: rgba(251, 250, 246, 0.96);
-  border: 1.5px solid var(--frame); outline: 1px solid var(--frame); outline-offset: 3px;
+  border: 1px solid var(--frame); outline: 0.5px solid var(--frame); outline-offset: 3px;
 }
 .title-panel { top: 18px; left: 18px; width: 250px; padding: 16px 18px 14px; }
-.title-panel .org { font-family: var(--serif); color: var(--frame); font-weight: 600; font-size: 13px; text-align: center; }
+.title-panel .org { font-family: var(--serif); color: var(--accent); font-weight: 600; font-size: 13px; text-align: center; }
 .title-panel h1 { font-family: var(--serif); font-weight: 600; font-size: 34px; line-height: 1; margin: 8px 0 2px; text-align: center; text-transform: uppercase; letter-spacing: 0.02em; }
-.title-panel .subtitle { font-family: var(--serif); color: var(--frame); font-size: 22px; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; padding-bottom: 10px; border-bottom: 1px solid #d8cfc6; }
+.title-panel .subtitle { font-family: var(--serif); color: var(--accent); font-size: 22px; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; padding-bottom: 10px; border-bottom: 1px solid #d8cfc6; }
 .areas { margin: 10px 0 0; padding-left: 22px; font-size: 13px; line-height: 1.55; }
 
 .key { bottom: 34px; left: 18px; width: 250px; padding: 10px 14px 10px; font-size: 12px; }
