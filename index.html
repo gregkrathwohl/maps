@@ -68,21 +68,14 @@
 </div>
 
 <section class="routes-card" id="routes" hidden>
-  <header id="rt-head"><b>Routes</b><span class="rt-caret" aria-hidden="true">▾</span></header>
-  <div class="rt-body">
-    <ul class="rt-list" id="rt-list"></ul>
-    <div class="rt-plan" id="rt-plan" hidden>
-      <p class="hint">Click the water to add stops. Click right on a buoy or launch to snap to it. Legs bend around land.</p>
-      <div class="total" id="pl-total"></div>
-      <ol class="rt-legs" id="pl-legs"></ol>
-      <label class="buf">Stay <span id="pl-buf-val">30</span> m off shore<input type="range" id="pl-buf" min="10" max="150" step="5" value="30"></label>
-      <div class="row">
-        <button id="pl-undo">Undo</button><button id="pl-clear">Clear</button>
-        <span class="spacer"></span>
-        <button id="pl-save" class="dev-only primary">Save…</button><button id="pl-done">Done</button>
-      </div>
-    </div>
-    <button class="rt-new" id="rt-new">+ Plan a route</button>
+  <div class="rt-idle" id="rt-idle">
+    <button class="rt-new" id="rt-new">Create a route</button>
+  </div>
+  <div class="rt-plan" id="rt-plan" hidden>
+    <div class="rt-total" id="pl-total"></div>
+    <p class="hint" id="pl-hint">Click the water to start. Each click adds a stop; legs bend around land.</p>
+    <ol class="rt-legs" id="pl-legs"></ol>
+    <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><span class="spacer"></span><button id="pl-done" class="primary">Done</button></div>
   </div>
 </section>
 

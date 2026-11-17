@@ -157,54 +157,27 @@ if (bay) {
   waterSel.value = state.waterMode;
   waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; savePrefs({ waterMode: state.waterMode }); map.setStyle(style(), { diff: false }); });
 
-  // --- routes card: saved routes, their legs, and "plan a route"
+  // --- routes card: "Create a route" → click stops, see the route and its full length
   const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
-  const short = (t) => { const m = Math.round((t.total / 3) * 60); return `${t.total.toFixed(1)} nm · ~${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`}`; };
-  const legsHTML = (t) => t.legs.map(l => `<li>${l.from || 'Waypoint'} → ${l.to || 'waypoint'} · ${l.nm.toFixed(2)} nm</li>`).join('');
-  let sel = null;              // index of the shown saved route, 'plan', or null
+  const timeFor = (nm) => { const m = Math.round((nm / 3) * 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+  let sel = null;              // 'plan' while creating a route
   let plan = [];
-  const built = trips.map(tr => buildTrip(router, tr.stops.map(resolve).filter(Boolean)));
   const planning = () => sel === 'plan';
-  const render = () => {
-    card.hidden = false;
-    $('rt-list').hidden = planning(); $('rt-new').hidden = planning(); $('rt-plan').hidden = !planning();
-    document.body.classList.toggle('planning', planning());
-    $('rt-list').innerHTML = trips.map((tr, i) => `<li>
-        <button class="rt-item${sel === i ? ' on' : ''}" data-i="${i}">
-          <span class="name">${tr.name}</span><span class="meta">${short(built[i])}</span>
-        </button>${sel === i ? `<ol class="rt-legs">${legsHTML(built[i])}</ol>` : ''}</li>`).join('');
-  };
   const refresh = () => {
-    if (planning()) {
-      const t = buildTrip(router, plan); showTrip(t);
-      $('pl-total').textContent = t.legs.length ? short(t) : '';
-      $('pl-legs').innerHTML = legsHTML(t);
-    } else if (sel == null) showTrip({ geojson: empty });
-    else { built[sel] = buildTrip(router, trips[sel].stops.map(resolve).filter(Boolean)); showTrip(built[sel]); }
-    render();
+    card.hidden = false;
+    $('rt-idle').hidden = planning(); $('rt-plan').hidden = !planning();
+    document.body.classList.toggle('planning', planning());
+    if (!planning()) { showTrip({ geojson: empty }); return; }
+    const t = buildTrip(router, plan); showTrip(t);
+    $('pl-hint').hidden = plan.length >= 2;
+    $('pl-hint').textContent = plan.length ? 'Now click your next stop.' : 'Click the water to start. Each click adds a stop; legs bend around land.';
+    $('pl-total').innerHTML = t.legs.length ? `${t.total.toFixed(2)} nm<small>${(t.total * 1.15078).toFixed(1)} mi · ~${timeFor(t.total)} at 3 kn</small>` : '';
+    $('pl-legs').innerHTML = t.legs.length > 1 ? t.legs.map(l => `<li>${l.from || 'Point'} → ${l.to || 'point'} · ${l.nm.toFixed(2)} nm</li>`).join('') : '';
   };
-  $('rt-list').addEventListener('click', (ev) => {
-    const b = ev.target.closest('.rt-item'); if (!b) return;
-    const i = +b.dataset.i; sel = sel === i ? null : i; refresh();
-    if (sel != null) { // fit the route in view
-      const c = built[sel].geojson.features.flatMap(f => (f.geometry.type === 'LineString' ? f.geometry.coordinates : []));
-      if (c.length) map.fitBounds(c.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(c[0], c[0])), { padding: { top: 60, bottom: 160, left: 300, right: 330 }, maxZoom: 14.5 });
-    }
-  });
-  $('rt-head').addEventListener('click', () => card.classList.toggle('collapsed'));
   $('rt-new').addEventListener('click', () => { sel = 'plan'; plan = []; refresh(); });
   $('pl-done').addEventListener('click', () => { sel = null; plan = []; refresh(); });
-  $('pl-buf').addEventListener('input', (ev) => { $('pl-buf-val').textContent = ev.target.value; router?.setBuffer(+ev.target.value); refresh(); });
   $('pl-undo').addEventListener('click', () => { plan.pop(); refresh(); });
   $('pl-clear').addEventListener('click', () => { plan = []; refresh(); });
-  $('pl-save').addEventListener('click', async () => {
-    if (plan.length < 2) return;
-    const name = prompt('Name this route'); if (!name) return;
-    trips.push({ name, stops: plan.map(p => p.ref) });
-    built.push(buildTrip(router, plan));
-    await fetch(`${base}/trips.json`, { method: 'PUT', body: JSON.stringify(trips, null, 1) });
-    plan = []; sel = trips.length - 1; refresh();
-  });
   refresh();
   // clicks near a buoy, beacon or launch snap to it (and are saved by name)
   map.on('click', (ev) => {
@@ -236,7 +209,6 @@ if (bay) {
   };
   gridOn.addEventListener('change', drawGrid);
   const redrawGridSoon = () => { if (gridOn.checked) setTimeout(drawGrid, 50); };
-  $('pl-buf').addEventListener('input', redrawGridSoon);
   map.on('click', redrawGridSoon);
 
   // --- NOAA SFBOFS currents: pale moving streaks, time slider
@@ -273,7 +245,8 @@ if (bay) {
     }
     syncNow();
 
-    // --- tide curve (NOAA high/low predictions, cosine between them) under the slider
+    // --- tide curve (NOAA high/low predictions, cosine between them): it IS the time control.
+    // Hover to read time + height, click or drag to move the currents to that time.
     const tides = await fetch(`${base}/data/tides.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
     if (tides?.hilo?.length > 1) {
       const T = flowData.times.map(Date.parse), t0 = T[0], t1 = T[T.length - 1], n = T.length - 1;
@@ -284,35 +257,51 @@ if (bay) {
         const a = hl[k - 1], b = hl[k], f = (ms - a.ms) / (b.ms - a.ms);
         return (a.v + b.v) / 2 + ((a.v - b.v) / 2) * Math.cos(Math.PI * f);
       };
+      const clock = (ms) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(' ', '').replace(/(am|pm|AM|PM)$/, m => m[0].toLowerCase());
       const xs = Array.from({ length: 241 }, (_, i) => t0 + ((t1 - t0) * i) / 240);
       const hs = xs.map(height);
       const valid = hs.filter(v => v != null), lo = Math.min(...valid), hi = Math.max(...valid);
-      const Y = (v) => 9 + (1 - (v - lo) / (hi - lo)) * 18; // plot band y 9–27 of 36
+      const Y = (v) => 11 + (1 - (v - lo) / (hi - lo)) * 20; // plot band y 11–31 of 42
       const X = (ms) => ((ms - t0) / (t1 - t0)) * 1000;
       const pts = xs.map((ms, i) => (hs[i] == null ? null : `${X(ms).toFixed(1)},${Y(hs[i]).toFixed(2)}`)).filter(Boolean);
       const box = $('flow-tide');
-      let html = `<svg viewBox="0 0 1000 36" preserveAspectRatio="none">
-        <path d="M${pts[0].split(',')[0]},36 L${pts.join(' L')} L${pts[pts.length - 1].split(',')[0]},36 Z" fill="rgba(58,111,151,0.10)"/>
+      let html = `<svg viewBox="0 0 1000 42" preserveAspectRatio="none">
+        <path d="M${pts[0].split(',')[0]},42 L${pts.join(' L')} L${pts[pts.length - 1].split(',')[0]},42 Z" fill="rgba(58,111,151,0.10)"/>
         <polyline points="${pts.join(' ')}" fill="none" stroke="#3a6f97" stroke-width="1.3" vector-effect="non-scaling-stroke"/>
       </svg>`;
       for (const h of hl) if (h.ms >= t0 && h.ms <= t1) {
-        const left = `${(X(h.ms) / 10).toFixed(2)}%`;
-        const time = new Date(h.ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(' ', '').toLowerCase();
-        html += `<span class="lbl ${h.type === 'H' ? 'h' : 'l'}" style="left:${left}" title="${h.type === 'H' ? 'High' : 'Low'} ${time}">${h.v.toFixed(1)}</span>`;
+        html += `<span class="lbl ${h.type === 'H' ? 'h' : 'l'}" style="left:${(X(h.ms) / 10).toFixed(2)}%">${clock(h.ms)}</span>`;
       }
-      html += `<div class="cursor" id="tide-cursor"></div>`;
+      html += `<div class="cursor" id="tide-cursor"><i></i></div><div class="hover" id="tide-hover" hidden><div class="line"></div><div class="tip"></div></div>`;
       box.innerHTML = html;
       box.parentElement.classList.add('has-tide');
-      const cursor = $('tide-cursor');
+      const cursor = $('tide-cursor'), hover = $('tide-hover');
       const showTide = (t) => {
         const ms = t0 + (t / n) * (t1 - t0), v = height(ms), dv = height(ms + 600e3) - v;
         cursor.style.left = `${(t / n) * 100}%`;
+        if (v != null) cursor.querySelector('i').style.top = `${(Y(v) / 42) * 100}%`;
         const sm = label.querySelector('small');
         if (v != null && sm) { sm.textContent = `Tide ${v.toFixed(1)} ft ${dv > 0 ? '↑' : '↓'}`; sm.title = `${dv > 0 ? 'Rising' : 'Falling'} · NOAA prediction for ${tides.name}, ft above MLLW`; }
       };
       const prevOnTime = flow.onTime;
       flow.onTime = (t) => { prevOnTime(t); showTide(t); };
       showTide(flow.t);
+
+      // pointer → time index
+      const at = (ev) => { const r = box.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)) * n; };
+      const setFrom = (ev) => { const t = Math.round(at(ev) * 4) / 4; slider.value = t; flow.setTime(t); syncNow(); };
+      let dragging = false;
+      box.addEventListener('pointerdown', (ev) => { dragging = true; box.setPointerCapture(ev.pointerId); setFrom(ev); });
+      box.addEventListener('pointerup', () => { dragging = false; });
+      box.addEventListener('pointermove', (ev) => {
+        if (dragging) setFrom(ev);
+        const t = at(ev), ms = t0 + (t / n) * (t1 - t0), v = height(ms);
+        hover.hidden = false;
+        hover.style.left = `${(t / n) * 100}%`;
+        const day = new Date(ms).toLocaleDateString([], { weekday: 'short' });
+        hover.querySelector('.tip').textContent = `${day} ${clock(ms)}${v != null ? ` · ${v.toFixed(1)} ft` : ''}`;
+      });
+      box.addEventListener('pointerleave', () => { hover.hidden = true; });
     }
     const show = (on) => { onBox.checked = on; $('flow-panel').hidden = !on; flow.setVisible(on); };
     onBox.addEventListener('change', () => { show(onBox.checked); savePrefs({ currents: onBox.checked }); });
