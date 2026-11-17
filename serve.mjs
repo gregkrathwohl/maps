@@ -30,6 +30,15 @@ http.createServer((req, res) => {
     return;
   }
 
+  // GET /api/places — every places/<id>/place.json, for the library page
+  if (url.pathname === '/api/places') {
+    const dir = path.join(root, 'places');
+    const list = fs.readdirSync(dir).filter(d => fs.existsSync(path.join(dir, d, 'place.json')))
+      .map(id => ({ id, ...JSON.parse(fs.readFileSync(path.join(dir, id, 'place.json'), 'utf8')) }));
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+    return res.end(JSON.stringify(list));
+  }
+
   let p = file;
   if (fs.existsSync(p) && fs.statSync(p).isDirectory()) p = path.join(p, 'index.html');
   if (!fs.existsSync(p)) return res.writeHead(404).end('not found');
