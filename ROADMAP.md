@@ -68,6 +68,13 @@ step; the design *is* the code. Places so far: Marin Headlands, Angel Island
 
 Suggested order: 2 (looks great on the static map), then 3 (truth + animation), keep 4 for fun.
 
+**How currents should look (Greg, 2026-11-17):** a *living background*, not the main event.
+Thin, uncoloured, light lines drifting through the water, much quieter than PredictWind.
+Encode strength with motion, not colour: faster/longer/more frequent streaks where the
+current is strong, sparse and slow where it's weak. A time scrubber to slide through past
+and forecast hours (SFBOFS nowcast + 48 h). Same treatment later for wind. The NOAA viewers
+show the data in an ugly way; the point is the same truth, drawn beautifully.
+
 ## Turning these into finished maps
 
 1. **Design pass per place:** labels, hierarchy, colours, legend, title block.
@@ -83,5 +90,9 @@ Suggested order: 2 (looks great on the static map), then 3 (truth + animation), 
 
 - Ipswich-style "town map with trail systems sprinkled around it" (multiple park boundaries).
 - Race maps: course + mile markers + aid stations on the same base.
-- Your own Strava activities as a "where I've actually been" layer.
+- Your own Strava activities as a "where I've actually been" layer: a separate overlay
+  (not part of the route tools), kayak / paddleboard / swim only, all tracks drawn faintly
+  so they add up to a personal heat map, hover or scroll a list to highlight one.
+  Data: Strava account export for everything (hundreds of kayaks); the Strava connector
+  is fine for a quick first pass at the last year or so.
 - Mt. Tam, Ipswich/Willowdale, an expanded SF Bay paddling map.
