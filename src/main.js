@@ -152,37 +152,48 @@ $('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.
 if (bay) {
   const router = await Router.load(base);
   const resolve = resolver(osm, aton);
-  const waterSel = $('water-mode'), tripSel = $('trip-select'), planner = $('planner');
-  waterSel.hidden = tripSel.hidden = false;
+  const waterSel = $('water-mode'), card = $('routes');
+  waterSel.hidden = false;
   waterSel.value = state.waterMode;
   waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; savePrefs({ waterMode: state.waterMode }); map.setStyle(style(), { diff: false }); });
 
+  // --- routes card: saved routes, their legs, and "plan a route"
   const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
-  const renderPanel = (t, title) => {
-    const sm = summary(t);
-    $('pl-title').textContent = title;
-    $('pl-total').textContent = t.legs.length ? sm.total : '';
-    $('pl-legs').innerHTML = sm.legs.map(l => `<li>${l}</li>`).join('');
-  };
-  tripSel.innerHTML = `<option value="">No route</option>` +
-    trips.map((t, i) => `<option value="${i}">${t.name}</option>`).join('') + `<option value="plan">Plan a route…</option>`;
-
+  const short = (t) => { const m = Math.round((t.total / 3) * 60); return `${t.total.toFixed(1)} nm · ~${m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`}`; };
+  const legsHTML = (t) => t.legs.map(l => `<li>${l.from || 'Waypoint'} → ${l.to || 'waypoint'} · ${l.nm.toFixed(2)} nm</li>`).join('');
+  let sel = null;              // index of the shown saved route, 'plan', or null
   let plan = [];
-  const planning = () => tripSel.value === 'plan';
-  const refresh = () => {
-    if (planning()) { const t = buildTrip(router, plan); showTrip(t); renderPanel(t, 'Plan a route'); return; }
-    if (tripSel.value === '') { showTrip({ geojson: empty }); planner.hidden = true; return; }
-    const trip = trips[+tripSel.value];
-    const t = buildTrip(router, trip.stops.map(resolve).filter(Boolean));
-    showTrip(t); renderPanel(t, trip.name);
-  };
-  tripSel.addEventListener('change', () => {
-    planner.hidden = tripSel.value === '';
+  const built = trips.map(tr => buildTrip(router, tr.stops.map(resolve).filter(Boolean)));
+  const planning = () => sel === 'plan';
+  const render = () => {
+    card.hidden = false;
+    $('rt-list').hidden = planning(); $('rt-new').hidden = planning(); $('rt-plan').hidden = !planning();
     document.body.classList.toggle('planning', planning());
-    for (const el of ['pl-undo', 'pl-clear', 'pl-save']) $(el).hidden = !planning();
-    planner.querySelector('.hint').hidden = !planning();
-    refresh();
+    $('rt-list').innerHTML = trips.map((tr, i) => `<li>
+        <button class="rt-item${sel === i ? ' on' : ''}" data-i="${i}">
+          <span class="name">${tr.name}</span><span class="meta">${short(built[i])}</span>
+        </button>${sel === i ? `<ol class="rt-legs">${legsHTML(built[i])}</ol>` : ''}</li>`).join('');
+  };
+  const refresh = () => {
+    if (planning()) {
+      const t = buildTrip(router, plan); showTrip(t);
+      $('pl-total').textContent = t.legs.length ? short(t) : '';
+      $('pl-legs').innerHTML = legsHTML(t);
+    } else if (sel == null) showTrip({ geojson: empty });
+    else { built[sel] = buildTrip(router, trips[sel].stops.map(resolve).filter(Boolean)); showTrip(built[sel]); }
+    render();
+  };
+  $('rt-list').addEventListener('click', (ev) => {
+    const b = ev.target.closest('.rt-item'); if (!b) return;
+    const i = +b.dataset.i; sel = sel === i ? null : i; refresh();
+    if (sel != null) { // fit the route in view
+      const c = built[sel].geojson.features.flatMap(f => (f.geometry.type === 'LineString' ? f.geometry.coordinates : []));
+      if (c.length) map.fitBounds(c.reduce((bb, p) => bb.extend(p), new maplibregl.LngLatBounds(c[0], c[0])), { padding: { top: 60, bottom: 160, left: 300, right: 330 }, maxZoom: 14.5 });
+    }
   });
+  $('rt-head').addEventListener('click', () => card.classList.toggle('collapsed'));
+  $('rt-new').addEventListener('click', () => { sel = 'plan'; plan = []; refresh(); });
+  $('pl-done').addEventListener('click', () => { sel = null; plan = []; refresh(); });
   $('pl-buf').addEventListener('input', (ev) => { $('pl-buf-val').textContent = ev.target.value; router?.setBuffer(+ev.target.value); refresh(); });
   $('pl-undo').addEventListener('click', () => { plan.pop(); refresh(); });
   $('pl-clear').addEventListener('click', () => { plan = []; refresh(); });
@@ -190,12 +201,11 @@ if (bay) {
     if (plan.length < 2) return;
     const name = prompt('Name this route'); if (!name) return;
     trips.push({ name, stops: plan.map(p => p.ref) });
+    built.push(buildTrip(router, plan));
     await fetch(`${base}/trips.json`, { method: 'PUT', body: JSON.stringify(trips, null, 1) });
-    const i = trips.length - 1;
-    tripSel.insertAdjacentHTML('beforeend', '');
-    tripSel.querySelector('option[value="plan"]').insertAdjacentHTML('beforebegin', `<option value="${i}">${name}</option>`);
-    plan = []; tripSel.value = String(i); tripSel.dispatchEvent(new Event('change'));
+    plan = []; sel = trips.length - 1; refresh();
   });
+  refresh();
   // clicks near a buoy, beacon or launch snap to it (and are saved by name)
   map.on('click', (ev) => {
     if (!planning() || layer.editing) return;
@@ -226,7 +236,6 @@ if (bay) {
   };
   gridOn.addEventListener('change', drawGrid);
   const redrawGridSoon = () => { if (gridOn.checked) setTimeout(drawGrid, 50); };
-  tripSel.addEventListener('change', redrawGridSoon);
   $('pl-buf').addEventListener('input', redrawGridSoon);
   map.on('click', redrawGridSoon);
 
@@ -263,6 +272,48 @@ if (bay) {
       $('flow-ticks').innerHTML = html;
     }
     syncNow();
+
+    // --- tide curve (NOAA high/low predictions, cosine between them) under the slider
+    const tides = await fetch(`${base}/data/tides.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
+    if (tides?.hilo?.length > 1) {
+      const T = flowData.times.map(Date.parse), t0 = T[0], t1 = T[T.length - 1], n = T.length - 1;
+      const hl = tides.hilo.map(h => ({ ...h, ms: Date.parse(h.t) }));
+      const height = (ms) => {
+        const k = hl.findIndex(h => h.ms > ms);
+        if (k <= 0) return null;
+        const a = hl[k - 1], b = hl[k], f = (ms - a.ms) / (b.ms - a.ms);
+        return (a.v + b.v) / 2 + ((a.v - b.v) / 2) * Math.cos(Math.PI * f);
+      };
+      const xs = Array.from({ length: 241 }, (_, i) => t0 + ((t1 - t0) * i) / 240);
+      const hs = xs.map(height);
+      const valid = hs.filter(v => v != null), lo = Math.min(...valid), hi = Math.max(...valid);
+      const Y = (v) => 9 + (1 - (v - lo) / (hi - lo)) * 18; // plot band y 9–27 of 36
+      const X = (ms) => ((ms - t0) / (t1 - t0)) * 1000;
+      const pts = xs.map((ms, i) => (hs[i] == null ? null : `${X(ms).toFixed(1)},${Y(hs[i]).toFixed(2)}`)).filter(Boolean);
+      const box = $('flow-tide');
+      let html = `<svg viewBox="0 0 1000 36" preserveAspectRatio="none">
+        <path d="M${pts[0].split(',')[0]},36 L${pts.join(' L')} L${pts[pts.length - 1].split(',')[0]},36 Z" fill="rgba(58,111,151,0.10)"/>
+        <polyline points="${pts.join(' ')}" fill="none" stroke="#3a6f97" stroke-width="1.3" vector-effect="non-scaling-stroke"/>
+      </svg>`;
+      for (const h of hl) if (h.ms >= t0 && h.ms <= t1) {
+        const left = `${(X(h.ms) / 10).toFixed(2)}%`;
+        const time = new Date(h.ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).replace(' ', '').toLowerCase();
+        html += `<span class="lbl ${h.type === 'H' ? 'h' : 'l'}" style="left:${left}" title="${h.type === 'H' ? 'High' : 'Low'} ${time}">${h.v.toFixed(1)}</span>`;
+      }
+      html += `<div class="cursor" id="tide-cursor"></div>`;
+      box.innerHTML = html;
+      box.parentElement.classList.add('has-tide');
+      const cursor = $('tide-cursor');
+      const showTide = (t) => {
+        const ms = t0 + (t / n) * (t1 - t0), v = height(ms), dv = height(ms + 600e3) - v;
+        cursor.style.left = `${(t / n) * 100}%`;
+        const sm = label.querySelector('small');
+        if (v != null && sm) { sm.textContent = `Tide ${v.toFixed(1)} ft ${dv > 0 ? '↑' : '↓'}`; sm.title = `${dv > 0 ? 'Rising' : 'Falling'} · NOAA prediction for ${tides.name}, ft above MLLW`; }
+      };
+      const prevOnTime = flow.onTime;
+      flow.onTime = (t) => { prevOnTime(t); showTide(t); };
+      showTide(flow.t);
+    }
     const show = (on) => { onBox.checked = on; $('flow-panel').hidden = !on; flow.setVisible(on); };
     onBox.addEventListener('change', () => { show(onBox.checked); savePrefs({ currents: onBox.checked }); });
     colourBox.checked = prefs.colour; flow.setColour(prefs.colour);

@@ -29,12 +29,13 @@ jobs:
           cache: npm
       - run: pip install numpy netCDF4
       - run: npm ci
-      - name: Fetch NOAA currents
+      - name: Fetch NOAA currents and tides
         run: |
           for p in places/*/place.json; do
             id=$(basename "$(dirname "$p")")
             if python -c "import json,sys; sys.exit(0 if 'currents' in json.load(open('$p')) else 1)"; then
               echo "== $id"; python scripts/fetch-sfbofs.py "$id"
+              node scripts/fetch-tides.mjs "$id"
             fi
           done
       - name: Build and publish

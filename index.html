@@ -51,7 +51,6 @@
   <select id="water-mode" hidden aria-label="Water texture">
     <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
   </select>
-  <select id="trip-select" hidden aria-label="Route"></select>
   <label id="flow-toggle" hidden><input type="checkbox" id="flow-on" checked> Currents</label>
   <label id="grid-toggle" class="dev-only" hidden><input type="checkbox" id="grid-on"> Grid</label>
   <span id="zoom"></span>
@@ -68,19 +67,30 @@
   <p class="hint">Drag labels to move. Alt-click the map to add one.</p>
 </div>
 
-<div class="inspector planner" id="planner" hidden>
-  <b id="pl-title">Plan a route</b>
-  <p class="hint">Click to add stops. Clicking right on a buoy or launch snaps to it (hold ⌥ to skip snapping); clicks on land move to the nearest water. Legs bend around land.</p>
-  <label>Keep <span id="pl-buf-val">30</span> m off shore<input type="range" id="pl-buf" min="10" max="150" step="5" value="30"></label>
-  <div id="pl-total" class="total"></div>
-  <ol id="pl-legs"></ol>
-  <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><button id="pl-save" class="dev-only">Save route…</button></div>
-</div>
+<section class="routes-card" id="routes" hidden>
+  <header id="rt-head"><b>Routes</b><span class="rt-caret" aria-hidden="true">▾</span></header>
+  <div class="rt-body">
+    <ul class="rt-list" id="rt-list"></ul>
+    <div class="rt-plan" id="rt-plan" hidden>
+      <p class="hint">Click the water to add stops. Click right on a buoy or launch to snap to it. Legs bend around land.</p>
+      <div class="total" id="pl-total"></div>
+      <ol class="rt-legs" id="pl-legs"></ol>
+      <label class="buf">Stay <span id="pl-buf-val">30</span> m off shore<input type="range" id="pl-buf" min="10" max="150" step="5" value="30"></label>
+      <div class="row">
+        <button id="pl-undo">Undo</button><button id="pl-clear">Clear</button>
+        <span class="spacer"></span>
+        <button id="pl-save" class="dev-only primary">Save…</button><button id="pl-done">Done</button>
+      </div>
+    </div>
+    <button class="rt-new" id="rt-new">+ Plan a route</button>
+  </div>
+</section>
 
 <div class="flow-panel" id="flow-panel" hidden>
   <span class="flow-title">Currents</span>
   <div class="flow-track">
     <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Forecast time">
+    <div class="flow-tide" id="flow-tide" aria-hidden="true"></div>
     <div class="flow-ticks" id="flow-ticks" aria-hidden="true"></div>
   </div>
   <span id="flow-label" class="flow-when"></span>

@@ -66,5 +66,9 @@
   "currents": true,
   "waterMode": "depth",
   "waterShade": 0.18
+ },
+ "tides": {
+  "station": "9414806",
+  "name": "Sausalito"
  }
 }

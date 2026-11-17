@@ -28,7 +28,7 @@ fs.writeFileSync(path.join(out, 'map.html'), html);
 // places: config + the data files the map actually loads
 const KEEP = ['place.json', 'labels.json', 'trips.json', 'routes.json'];
 const DATA = ['osm.geojson', 'aton.geojson', 'coast.geojson', 'ripples.geojson', 'routes.geojson',
-  'navgrid.png', 'navgrid.json', 'currents-sfbofs.json'];
+  'navgrid.png', 'navgrid.json', 'currents-sfbofs.json', 'tides.json'];
 const list = [];
 for (const id of fs.readdirSync('places')) {
   const dir = `places/${id}`;
