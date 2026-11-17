@@ -63,11 +63,12 @@ for k in keys:
     gu = (u[idx] * wts).sum(1); gv = (v[idx] * wts).sum(1)
     gu[~valid] = 0; gv[~valid] = 0
     times.append(t.strftime('%Y-%m-%dT%H:%M:%SZ'))
-    U.append(np.round(gu * 100).astype(int).tolist()); V.append(np.round(gv * 100).astype(int).tolist())
+    # compact: values only for water cells (listed once in 'water'), cm/s integers
+    U.append(np.round(gu[valid] * 100).astype(int).tolist()); V.append(np.round(gv[valid] * 100).astype(int).tolist())
     print(times[-1], k.split('.')[-2], f'max {np.hypot(gu, gv).max():.2f} m/s', flush=True)
 
 out = {'source': f'NOAA SFBOFS {day} {run}', 'bbox': [w, s, e, n], 'nx': nx, 'ny': ny, 'cell': CELL,
-       'units': 'cm/s', 'mask': valid.astype(int).tolist(), 'times': times, 'u': U, 'v': V,
+       'units': 'cm/s', 'water': np.flatnonzero(valid).tolist(), 'times': times, 'u': U, 'v': V,
        'nowcast': sum(bool(re.search(r'fields\.n\d', k)) for k in keys)}
 json.dump(out, open(os.path.join(root, 'data', 'currents-sfbofs.json'), 'w'), separators=(',', ':'))
 print('wrote currents-sfbofs.json', flush=True)

@@ -238,7 +238,7 @@ if (bay) {
       ['density', 'Density', 0.2, 3, 0.05], ['zoomedOut', 'Thin when zoomed out', 0, 1.5, 0.05],
       ['speed', 'Speed', 50, 1200, 10], ['zoomEase', 'Calm when zoomed in', 0, 1, 0.05],
       ['compress', 'Slow-water boost (lower = more)', 0.2, 1, 0.05], ['trail', 'Trail length', 0.8, 0.99, 0.005],
-      ['life', 'Particle life', 20, 200, 5], ['opacity', 'Opacity', 0.2, 1.5, 0.05], ['width', 'Width', 0.4, 2.5, 0.05],
+      ['life', 'Particle life', 20, 200, 5], ['opacity', 'Opacity', 0.2, 2, 0.05], ['width', 'Width', 0.15, 2.5, 0.05],
     ];
     const box = $('tuner-sliders');
     const render = () => {
@@ -264,5 +264,11 @@ if (bay) {
   // a full style reload (Web/Paper, water switch) drops the route data and debug grid: put them back
   map.on('style.load', () => { map.getSource('trips')?.setData(state.trip); redrawGridSoon(); });
 }
+
+// --- show/hide all the working controls, to see the map clean
+const uiBtn = document.getElementById('ui-toggle');
+const setClean = (on) => { document.body.classList.toggle('clean', on); uiBtn.textContent = on ? 'Show controls' : 'Hide controls'; uiBtn.setAttribute('aria-pressed', on); };
+uiBtn.addEventListener('click', () => { const on = !document.body.classList.contains('clean'); setClean(on); savePrefs({ clean: on }); });
+setClean(!!prefs.clean);
 
 window.map = map; // for poking at in devtools

@@ -15,14 +15,15 @@ const RAMP = [[0, [207, 230, 239]], [0.25, [159, 208, 224]], [0.5, [124, 196, 17
 
 // every look-and-feel knob in one place; the tuning panel edits these live
 export const DEFAULTS = {
-  density: 1.0,     // particles per 1000 px² of screen at zoom 13.5
+  // tuned by Greg 2026-11-17: thin, sharp, fully opaque streaks read like fine linework
+  density: 1.6,     // particles per 1000 px² of screen at zoom 13.5
   zoomedOut: 0.5,   // how fast density thins as you zoom out (0 = no thinning)
   speed: 420,       // streaks move this many times faster than the water
-  zoomEase: 0.7,    // past zoom 13.5, how much to damp the real-speed increase (0 = none, 1 = constant on screen)
+  zoomEase: 0.85,   // past zoom 13.5, how much to damp the real-speed increase (0 = none, 1 = constant on screen)
   compress: 0.45,   // visual speed ∝ speed^compress (lower = slow water moves more)
-  trail: 0.93,      // per-frame trail fade (higher = longer streaks)
-  opacity: 0.85,    // overall streak opacity
-  width: 1.0,       // overall streak width
+  trail: 0.885,     // per-frame trail fade (higher = longer streaks)
+  opacity: 1.5,     // overall streak opacity (multiplier; capped at fully opaque)
+  width: 0.4,       // overall streak width (multiplier)
   life: 75,         // average particle life in frames
 };
 
@@ -30,6 +31,13 @@ export class FlowLayer {
   constructor(map, data, { onTime, beforeId, speedBeforeId, isWater, params } = {}) {
     Object.assign(this, { map, data, onTime, beforeId, speedBeforeId, isWater });
     this.p = { ...DEFAULTS, ...(params || {}) };
+    // compact files list values only for water cells: expand to full grids once
+    if (data.water) {
+      const n = data.nx * data.ny, idx = data.water;
+      data.mask = new Uint8Array(n); idx.forEach(i => (data.mask[i] = 1));
+      const full = (rows) => rows.map(r => { const a = new Int16Array(n); r.forEach((v, k) => (a[idx[k]] = v)); return a; });
+      data.u = full(data.u); data.v = full(data.v);
+    }
     const [w, , , n] = data.bbox;
     this.gw = w; this.gn = n;
     this.gmx = 111320 * Math.cos(((data.bbox[1] + data.bbox[3]) / 2) * Math.PI / 180);
