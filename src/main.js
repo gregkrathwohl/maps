@@ -12,13 +12,14 @@ const base = `places/${place}`;
 
 const empty = { type: 'FeatureCollection', features: [] };
 const optional = (url) => fetch(url).then(r => (r.ok ? r.json() : empty)).catch(() => empty);
-const [cfg, osm, labels, currents, routes, aton] = await Promise.all([
+const [cfg, osm, labels, currents, routes, aton, coastLines] = await Promise.all([
   fetch(`${base}/place.json`).then(r => r.json()),
   fetch(`${base}/data/osm.geojson`).then(r => r.json()),
   fetch(`${base}/labels.json`).then(r => (r.ok ? r.json() : [])),
   optional(`${base}/data/currents.geojson`),
   optional(`${base}/data/routes.geojson`),
   optional(`${base}/data/aton.geojson`),
+  optional(`${base}/data/coast.geojson`),
 ]);
 const bay = cfg.style === 'bay';
 if (bay) document.querySelector('.key').innerHTML = `
@@ -58,7 +59,7 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 const state = { mode: 'web', hillshade: false };
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
-const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton,
+const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade, handNames });
 
 const [w, s, e, n] = cfg.bbox;

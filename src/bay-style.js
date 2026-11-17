@@ -22,7 +22,7 @@ export const bayPalette = {
   outside: '#ece9e1',
 };
 
-export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
+export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, coastLines, contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
   const paper = mode === 'paper';
   const W = (base, k = null) => {
     const v = (x) => (k ? ['*', k, x] : x);
@@ -81,9 +81,11 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
 
     // ---- waterlining: old-chart ripples stepping out from the shore
     ...[[3, 0.55], [7, 0.35], [12, 0.22], [18, 0.12]].map(([off, op], i) => ({
-      id: `waterline-${i}`, type: 'line', source: 'osm', filter: coast,
+      id: `waterline-${i}`, type: 'line', source: 'coast',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': c.waterline, 'line-width': W(0.6), 'line-opacity': op, 'line-offset': O(off) } })),
-    { id: 'coast', type: 'line', source: 'osm', filter: coast,
+    { id: 'coast', type: 'line', source: 'coast',
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': c.coast, 'line-width': W(1.1) } },
 
     // ---- land detail, kept quiet
@@ -144,6 +146,9 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
       currents: { type: 'geojson', data: currents, lineMetrics: true },
       routes: { type: 'geojson', data: routes },
       aton: { type: 'geojson', data: aton },
+      // joined + smoothed coastline (scripts/coast.mjs); falls back to raw OSM coastline
+      coast: { type: 'geojson', data: coastLines?.features?.length ? coastLines
+        : { type: 'FeatureCollection', features: osm.features.filter(f => f.properties.natural === 'coastline') } },
       ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
         encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
