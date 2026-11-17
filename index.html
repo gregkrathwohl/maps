@@ -39,9 +39,9 @@
   <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after the ECTA Ipswich Trails Guide (CCGIS).</p>
 </aside>
 
-<button id="ui-toggle" class="ui-toggle" aria-pressed="false">Hide controls</button>
+<button id="ui-toggle" class="ui-toggle dev-only" aria-pressed="false">Hide controls</button>
 
-<div class="toolbar">
+<div class="toolbar dev-only">
   <div class="seg" role="group" aria-label="Zoom behavior">
     <button data-mode="web" class="on">Web</button>
     <button data-mode="paper">Paper</button>
@@ -78,10 +78,11 @@
 </div>
 
 <div class="flow-panel" id="flow-panel" hidden>
-  <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Time">
-  <button id="flow-now">Now</button>
-  <span id="flow-label"></span>
-  <label><input type="checkbox" id="flow-colour"> Colour by speed</label>
+  <span class="flow-title">Currents</span>
+  <button id="flow-now" title="Jump to the current hour">Now</button>
+  <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Forecast time">
+  <span id="flow-label" class="flow-when"></span>
+  <label class="dev-only"><input type="checkbox" id="flow-colour"> Colour by speed</label>
   <button id="flow-tune" class="dev-only">Tune</button>
 </div>
 

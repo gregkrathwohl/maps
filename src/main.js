@@ -38,6 +38,17 @@ if (bay) document.querySelector('.key').innerHTML = `
   <p class="src">Data: OpenStreetMap, NOAA ENC (buoys &amp; beacons), OpenFreeMap, AWS Terrain Tiles bathymetry. Not for navigation.</p>`;
 document.title = `${cfg.name} ${cfg.subtitle}`;
 document.getElementById('title').textContent = cfg.title || cfg.name;
+// shrink the title until its longest word fits the box (e.g. RICHARDSON)
+{
+  const h1 = document.getElementById('title'), box = h1.parentElement;
+  h1.innerHTML = (cfg.title || cfg.name).split(' ').map(w => `<span style="display:block">${w}</span>`).join('');
+  const fit = () => {
+    h1.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(h1).fontSize);
+    while (h1.scrollWidth > box.clientWidth - 36 && size > 18) h1.style.fontSize = `${--size}px`;
+  };
+  fit(); document.fonts?.ready.then(fit); // again once EB Garamond has loaded
+}
 document.getElementById('subtitle').textContent = cfg.subtitle || 'Trails Guide';
 document.getElementById('org').textContent = cfg.org || '';
 document.getElementById('areas').innerHTML = (cfg.areas || []).map(a => `<li>${a}</li>`).join('');
@@ -65,7 +76,9 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 // settings: the place's defaults, then whatever you chose last time on this place (localStorage)
 const prefsKey = `trail-cartography:v3:${place}`; // bump vN when the defaults change
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
-const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
+const PUBLIC = document.body.hasAttribute('data-public');
+// the public site has no settings UI, so it always uses the place's defaults
+const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}), ...(PUBLIC ? {} : loadPrefs()) };
 const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
 const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty };
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
@@ -86,6 +99,8 @@ map.on('style.load', () => addImages(map, c));
 map.addControl(new maplibregl.ScaleControl({ unit: 'imperial', maxWidth: 160 }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors' }));
+// start the attribution collapsed to its ⓘ button (MapLibre opens it on wide screens)
+map.once('load', () => document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => { el.classList.remove('maplibregl-compact-show'); el.removeAttribute('open'); }));
 
 const zoomEl = document.getElementById('zoom');
 const showZoom = () => (zoomEl.textContent = `z${map.getZoom().toFixed(1)}`);
@@ -222,7 +237,7 @@ if (bay) {
     // No frozen state: shown means moving.
     const flowKey = 'trail-cartography:flow:v2'; // bump when DEFAULTS change
     const savedFlow = (() => { try { return JSON.parse(localStorage.getItem(flowKey) || '{}'); } catch { return {}; } })();
-    const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
+    const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.innerHTML = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
     slider.addEventListener('input', () => flow.setTime(+slider.value));

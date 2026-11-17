@@ -239,5 +239,5 @@ export class FlowLayer {
 export function timeLabel(data, t) {
   const i = Math.round(t), d = new Date(data.times[i]);
   const s = d.toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' });
-  return `${s} · ${i < data.nowcast ? 'model nowcast' : 'forecast'}`;
+  return `<b>${s}</b><small>${i < data.nowcast ? 'model nowcast' : 'NOAA forecast'}</small>`;
 }
