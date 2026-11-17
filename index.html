@@ -79,9 +79,12 @@
 
 <div class="flow-panel" id="flow-panel" hidden>
   <span class="flow-title">Currents</span>
-  <button id="flow-now" title="Jump to the current hour">Now</button>
-  <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Forecast time">
+  <div class="flow-track">
+    <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Forecast time">
+    <div class="flow-ticks" id="flow-ticks" aria-hidden="true"></div>
+  </div>
   <span id="flow-label" class="flow-when"></span>
+  <button id="flow-now" title="Back to the current hour" disabled>Now</button>
   <label class="dev-only"><input type="checkbox" id="flow-colour"> Colour by speed</label>
   <button id="flow-tune" class="dev-only">Tune</button>
 </div>

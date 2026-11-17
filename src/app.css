@@ -91,23 +91,29 @@ body.planning #map canvas { cursor: crosshair; }
 
 
 .flow-panel {
-  position: absolute; z-index: 3; bottom: 30px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 12px; align-items: center; width: min(520px, calc(100% - 32px));
-  background: rgba(251, 250, 246, 0.96); border: 1px solid var(--frame); outline: 0.5px solid var(--frame); outline-offset: 3px;
-  padding: 7px 14px; font: 13px var(--sans); color: var(--ink);
+  position: absolute; z-index: 3; bottom: 28px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 14px; align-items: center; width: min(560px, calc(100% - 32px));
+  background: rgba(255, 255, 255, 0.96); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.10);
+  padding: 10px 14px 8px; font: 13px/1.2 var(--sans); color: #222;
 }
-.flow-title { font-family: var(--serif); color: var(--accent); text-transform: uppercase; letter-spacing: 0.08em; font-size: 13px; }
-.flow-panel button { font: 600 12px var(--sans); text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--ink);
-  background: transparent; color: var(--ink); padding: 2px 8px; cursor: pointer; }
-.flow-panel button:hover { background: var(--ink); color: var(--paper); }
-.flow-panel input[type=range] { flex: 1; -webkit-appearance: none; appearance: none; background: transparent; height: 18px; }
-.flow-panel input[type=range]::-webkit-slider-runnable-track { height: 2px; background: rgba(31,31,31,0.35); }
-.flow-panel input[type=range]::-moz-range-track { height: 2px; background: rgba(31,31,31,0.35); }
-.flow-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 13px; height: 13px; border-radius: 50%; background: var(--ink); margin-top: -5.5px; border: 2px solid var(--paper); box-shadow: 0 0 0 1px var(--ink); }
-.flow-panel input[type=range]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--ink); border: 2px solid var(--paper); }
-.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 150px; text-align: right; line-height: 1.15; }
+.flow-title { font-weight: 600; font-size: 13px; color: #222; }
+.flow-track { flex: 1; position: relative; padding-bottom: 14px; }
+.flow-panel input[type=range] { width: 100%; display: block; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; height: 18px; position: relative; z-index: 1; }
+.flow-panel input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #e3e7ea; }
+.flow-panel input[type=range]::-moz-range-track { height: 4px; border-radius: 2px; background: #e3e7ea; }
+.flow-panel input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; margin-top: -6px; box-shadow: 0 0 0 1.5px #3a6f97, 0 1px 3px rgba(0,0,0,0.25); cursor: grab; }
+.flow-panel input[type=range]::-moz-range-thumb { width: 14px; height: 14px; border-radius: 50%; background: #fff; border: 1.5px solid #3a6f97; cursor: grab; }
+/* day ticks + labels under the track; the thumb is 16px wide, so ticks run between 8px insets */
+.flow-ticks { position: absolute; left: 8px; right: 8px; top: 0; bottom: 0; pointer-events: none; }
+.flow-ticks i { position: absolute; top: 5px; width: 1px; height: 8px; background: #b8c2ca; }
+.flow-ticks i.now { background: #3a6f97; width: 2px; height: 10px; top: 4px; }
+.flow-ticks span { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10.5px; color: #8a949c; white-space: nowrap; }
+.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 118px; line-height: 1.2; }
 .flow-when b { font-weight: 600; }
-.flow-when small { display: block; color: #777; font-size: 11px; }
+.flow-when small { display: block; color: #8a949c; font-size: 11px; }
+.flow-panel button { font: 500 12px var(--sans); border: 1px solid #cfd6db; background: #fff; color: #222; border-radius: 7px; padding: 4px 10px; cursor: pointer; }
+.flow-panel button:hover:not(:disabled) { background: #f1f4f6; }
+.flow-panel button:disabled { color: #b8c0c6; border-color: #e6eaed; cursor: default; }
 .flow-panel[hidden] { display: none; }
 
 .tuner { top: auto; bottom: 90px; right: 18px; width: 270px; max-height: 70vh; overflow: auto; }

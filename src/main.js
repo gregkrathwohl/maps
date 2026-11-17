@@ -240,8 +240,27 @@ if (bay) {
     const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.innerHTML = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
-    slider.addEventListener('input', () => flow.setTime(+slider.value));
-    $('flow-now').addEventListener('click', () => flow.setTime(flow.nowIndex()));
+    // Now is only useful once you've moved away from now
+    const nowBtn = $('flow-now'), nowI = flow.nowIndex();
+    const syncNow = () => { nowBtn.disabled = Math.abs(+slider.value - nowI) < 0.5; };
+    slider.addEventListener('input', () => { flow.setTime(+slider.value); syncNow(); });
+    nowBtn.addEventListener('click', () => { flow.setTime(nowI); syncNow(); });
+    // ticks at each local midnight with the day name, plus a mark for "now"
+    {
+      const n = flowData.times.length - 1, pct = (i) => `${(i / n) * 100}%`;
+      let html = `<i class="now" style="left:${pct(nowI)}"></i>`;
+      // one label per local day, centred on that day's stretch of the slider (partial days too, if ≥ 4 h)
+      const days = [];
+      flowData.times.forEach((t, i) => {
+        const d = new Date(t), key = d.toDateString();
+        if (d.getHours() === 0 && i > 0) html += `<i style="left:${pct(i)}"></i>`;
+        if (!days.length || days[days.length - 1].key !== key) days.push({ key, from: i, to: i, name: d.toLocaleDateString([], { weekday: 'short' }) });
+        else days[days.length - 1].to = i;
+      });
+      for (const d of days) if (d.to - d.from >= 4) html += `<span style="left:${pct((d.from + d.to) / 2)}">${d.name}</span>`;
+      $('flow-ticks').innerHTML = html;
+    }
+    syncNow();
     const show = (on) => { onBox.checked = on; $('flow-panel').hidden = !on; flow.setVisible(on); };
     onBox.addEventListener('change', () => { show(onBox.checked); savePrefs({ currents: onBox.checked }); });
     colourBox.checked = prefs.colour; flow.setColour(prefs.colour);
