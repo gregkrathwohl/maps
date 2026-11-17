@@ -7,7 +7,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const bayPalette = {
   land: '#f7f4ec',
   park: '#dde3d4',
-  water: '#d6eaf0',
+  water: '#cde4ec',
   coast: '#4d86ad',
   waterline: '#5f97bd',
   isobath: '#7fb0cf',
@@ -64,7 +64,7 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     { id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': c.water } },
     { id: 'depth', type: 'color-relief', source: 'dem',
       paint: { 'color-relief-opacity': 0.9, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-        -80, '#5f9cc4', -40, '#7fb1d3', -20, '#9cc5df', -8, '#b9d8e8', -2, '#cfe5ee', -0.3, 'rgba(214,234,240,0)', 0, 'rgba(0,0,0,0)'] } },
+        -80, '#5f9cc4', -40, '#7fb1d3', -20, '#9cc5df', -8, '#b3d3e5', -2, '#c6dfea', -0.3, 'rgba(205,228,236,0)', 0, 'rgba(0,0,0,0)'] } },
     { id: 'marsh', type: 'fill', source: 'osm', minzoom: minz(12), filter: ['==', ['get', 'natural'], 'wetland'],
       paint: { 'fill-pattern': 'marsh' } },
     { id: 'beach', type: 'fill', source: 'osm', minzoom: minz(12),

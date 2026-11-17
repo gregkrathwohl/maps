@@ -54,7 +54,7 @@ for k in keys:
             d2 = (px[a:a+2000, None] - ex[None]) ** 2 + (py[a:a+2000, None] - ey[None]) ** 2
             nn = np.argpartition(d2, 3, axis=1)[:, :3]
             idx[a:a+2000] = nn; dst[a:a+2000] = np.sqrt(np.take_along_axis(d2, nn, 1))
-        valid = dst[:, 0] < CELL * 1.5
+        valid = dst[:, 0] < max(CELL * 1.5, 300)  # coarse 'is this the model's water' test; the map masks land exactly
         wts = 1 / np.maximum(dst, 1); wts /= wts.sum(1, keepdims=True)
         print(f'{sel.size} mesh elements in bbox → grid {nx}×{ny} @ {CELL} m, {valid.sum()} water cells', flush=True)
     u = ds['u'][0, 0, :].data[sel]; v = ds['v'][0, 0, :].data[sel]

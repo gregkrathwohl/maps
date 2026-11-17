@@ -220,7 +220,7 @@ if (bay) {
     $('flow-toggle').hidden = false;
     // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
     // No frozen state: shown means moving.
-    const flow = new FlowLayer(map, flowData, { beforeId: 'road', onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
+    const flow = new FlowLayer(map, flowData, { beforeId: 'road', isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
     slider.addEventListener('input', () => flow.setTime(+slider.value));

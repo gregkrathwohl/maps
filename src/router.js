@@ -31,6 +31,12 @@ export class Router {
     this.visited = new Uint8Array(this.W * this.H);
   }
   resetVisited() { this.visited.fill(0); }
+  // is this point water (by our coastline)? cells outside the grid count as water
+  isWater(lng, lat) {
+    const x = Math.round(((lng - this.w) * this.mx) / this.meta.cell), y = Math.round(((this.n - lat) * this.my) / this.meta.cell);
+    if (x < 0 || y < 0 || x >= this.W || y >= this.H) return true;
+    return this.dist[y * this.W + x] > 0;
+  }
 
   // debug picture of the grid: land, inside the buffer, open water by distance, cells the search explored
   debugImage() {

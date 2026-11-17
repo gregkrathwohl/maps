@@ -14,8 +14,8 @@ const MARGIN = 0.1;      // canvas reaches 10% beyond the view on each side
 const RAMP = [[0, [79, 143, 192]], [0.4, [70, 167, 140]], [0.8, [226, 177, 60]], [1.3, [212, 85, 58]]];
 
 export class FlowLayer {
-  constructor(map, data, { onTime, beforeId } = {}) {
-    Object.assign(this, { map, data, onTime, beforeId });
+  constructor(map, data, { onTime, beforeId, isWater } = {}) {
+    Object.assign(this, { map, data, onTime, beforeId, isWater });
     const [w, , , n] = data.bbox;
     this.gw = w; this.gn = n;
     this.gmx = 111320 * Math.cos(((data.bbox[1] + data.bbox[3]) / 2) * Math.PI / 180);
@@ -49,6 +49,7 @@ export class FlowLayer {
     const r = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(4e6 / ((W + 2 * mW) * (H + 2 * mH))));
     const tl = this.map.unproject([-mW, -mH]), br = this.map.unproject([W + mW, H + mH]);
     this.west = tl.lng; this.east = br.lng; this.north = tl.lat; this.south = br.lat;
+    const prev = this.CW ? { img: this.snapshot(), west: this.westOld, east: this.eastOld, my0: this.my0, my1: this.my1 } : null;
     this.CW = Math.round((W + 2 * mW) * r); this.CH = Math.round((H + 2 * mH) * r);
     this.canvas.width = this.CW; this.canvas.height = this.CH;
     this.pxScale = r;
@@ -56,9 +57,19 @@ export class FlowLayer {
     this.my0 = this.mercY(this.north); this.my1 = this.mercY(this.south);
     const latMid = (this.north + this.south) / 2;
     this.mPerPx = ((this.east - this.west) * 111320 * Math.cos(latMid * Math.PI / 180)) / this.CW;
-    const count = Math.round((W * H) / 560);
-    this.parts = Array.from({ length: count }, () => this.spawn(true));
+    this.westOld = this.west; this.eastOld = this.east;
+    // carry the existing trails over (mercator is linear, so it's one drawImage)
+    if (prev) {
+      const x0 = ((prev.west - this.west) / (this.east - this.west)) * this.CW, x1 = ((prev.east - this.west) / (this.east - this.west)) * this.CW;
+      const y0 = ((this.my0 - prev.my0) / (this.my0 - this.my1)) * this.CH, y1 = ((this.my0 - prev.my1) / (this.my0 - this.my1)) * this.CH;
+      this.ctx.drawImage(prev.img, x0, y0, x1 - x0, y1 - y0);
+    }
+    // keep particles that are still in view, top up the rest
+    const count = Math.round((W * H) / 700);
+    const keep = (this.parts || []).filter(p => p.lng > this.west && p.lng < this.east && p.lat > this.south && p.lat < this.north);
+    this.parts = keep.slice(0, count).concat(Array.from({ length: Math.max(0, count - keep.length) }, () => this.spawn(true)));
   }
+  snapshot() { const c = document.createElement('canvas'); c.width = this.canvas.width; c.height = this.canvas.height; c.getContext('2d').drawImage(this.canvas, 0, 0); return c; }
   mercY(lat) { const r = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + r / 2)); }
   toPx(lng, lat) {
     return [((lng - this.west) / (this.east - this.west)) * this.CW, ((this.my0 - this.mercY(lat)) / (this.my0 - this.my1)) * this.CH];
@@ -86,14 +97,20 @@ export class FlowLayer {
       ws += wt;
     }
     if (ws < 0.3) return null;
+    // exact water mask from our own coastline grid: streaks never cross land
+    if (this.isWater && !this.isWater(lng, lat)) return null;
     return [u / ws / 100, v / ws / 100];
   }
 
   spawn(randomAge = false) {
-    for (let tries = 0; tries < 8; tries++) {
+    for (let tries = 0; tries < 12; tries++) {
       const lng = this.west + Math.random() * (this.east - this.west);
       const lat = this.south + Math.random() * (this.north - this.south);
-      if (this.vel(lng, lat)) return { lng, lat, age: randomAge ? (Math.random() * 50) | 0 : 0, life: 50 + ((Math.random() * 50) | 0) };
+      const v = this.vel(lng, lat);
+      if (!v) continue;
+      // slack water gets fewer particles (it reads as clutter, not flow)
+      if (Math.random() > 0.3 + 0.7 * Math.min(1, Math.hypot(v[0], v[1]) / 0.35)) continue;
+      return { lng, lat, age: randomAge ? (Math.random() * 50) | 0 : 0, life: 50 + ((Math.random() * 50) | 0) };
     }
     return { lng: 0, lat: 0, age: 999, life: 0 }; // over land: retry next frame
   }
@@ -113,8 +130,10 @@ export class FlowLayer {
     ctx.fillStyle = 'rgba(0,0,0,0.93)';
     ctx.fillRect(0, 0, this.CW, this.CH);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.lineCap = 'round';
-    const mPerFrame = SPEEDUP / FPS;
+    ctx.lineCap = 'butt'; // round caps overlap at every joint and make beads
+    // real-speed motion, but eased once you zoom in past 13.5 so it doesn't go to warp speed
+    const z = this.map.getZoom();
+    const mPerFrame = (SPEEDUP / FPS) * (z > 13.5 ? Math.pow(2, -(z - 13.5) * 0.7) : 1);
     for (const p of this.parts) {
       const vel = p.age <= p.life && this.vel(p.lng, p.lat);
       if (!vel) { Object.assign(p, this.spawn()); continue; }
@@ -128,16 +147,10 @@ export class FlowLayer {
       const life = Math.min(1, p.age / 8, (p.life - p.age) / 8);
       const strength = Math.min(1, Math.sqrt(sp / 1.2));
       const width = (1.1 + 0.7 * strength) * r;
-      if (this.colour) {
-        ctx.strokeStyle = this.colourFor(sp, life * 0.85); ctx.lineWidth = width;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      } else {
-        // white core with a faint blue-grey edge, so streaks read on pale shallow water too
-        ctx.strokeStyle = `rgba(30,70,110,${(life * 0.14).toFixed(3)})`; ctx.lineWidth = width + 1.4 * r;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-        ctx.strokeStyle = `rgba(255,255,255,${(life * (0.6 + 0.35 * strength)).toFixed(3)})`; ctx.lineWidth = width;
-        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
-      }
+      ctx.strokeStyle = this.colour ? this.colourFor(sp, life * 0.85)
+        : `rgba(255,255,255,${(life * (0.65 + 0.35 * strength)).toFixed(3)})`;
+      ctx.lineWidth = width;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
       p.lng = lng2; p.lat = lat2;
     }
   }
