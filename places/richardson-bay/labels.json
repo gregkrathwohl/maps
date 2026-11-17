@@ -40,16 +40,6 @@
   "minzoom": 13
  },
  {
-  "text": "special anchorage",
-  "style": "water",
-  "size": 11,
-  "at": [
-   -122.4745,
-   37.8632
-  ],
-  "minzoom": 13.5
- },
- {
   "text": "ANGEL ISLAND",
   "style": "town",
   "size": 17,

@@ -7,7 +7,7 @@ import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 import { Router } from './router.js';
 import { resolver, buildTrip, summary } from './trips.js';
-import { FlowLayer, timeLabel } from './flow.js';
+import { FlowLayer, timeLabel, DEFAULTS as FLOW_DEFAULTS } from './flow.js';
 
 window.maplibregl = maplibregl;
 const place = new URLSearchParams(location.search).get('place') || 'marin-headlands';
@@ -220,7 +220,9 @@ if (bay) {
     $('flow-toggle').hidden = false;
     // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
     // No frozen state: shown means moving.
-    const flow = new FlowLayer(map, flowData, { beforeId: 'road', isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
+    const flowKey = 'trail-cartography:flow';
+    const savedFlow = (() => { try { return JSON.parse(localStorage.getItem(flowKey) || '{}'); } catch { return {}; } })();
+    const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
     slider.addEventListener('input', () => flow.setTime(+slider.value));
@@ -230,6 +232,32 @@ if (bay) {
     colourBox.checked = prefs.colour; flow.setColour(prefs.colour);
     colourBox.addEventListener('change', () => { flow.setColour(colourBox.checked); savePrefs({ colour: colourBox.checked }); });
     show(prefs.currents);
+
+    // --- tuning panel: every streak knob live; "Copy settings" gives values to hard-code
+    const SLIDERS = [
+      ['density', 'Density', 0.2, 3, 0.05], ['zoomedOut', 'Thin when zoomed out', 0, 1.5, 0.05],
+      ['speed', 'Speed', 50, 1200, 10], ['zoomEase', 'Calm when zoomed in', 0, 1, 0.05],
+      ['compress', 'Slow-water boost (lower = more)', 0.2, 1, 0.05], ['trail', 'Trail length', 0.8, 0.99, 0.005],
+      ['life', 'Particle life', 20, 200, 5], ['opacity', 'Opacity', 0.2, 1.5, 0.05], ['width', 'Width', 0.4, 2.5, 0.05],
+    ];
+    const box = $('tuner-sliders');
+    const render = () => {
+      box.innerHTML = SLIDERS.map(([k, label, min, max, step]) =>
+        `<label>${label}<span id="tv-${k}">${flow.p[k]}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${flow.p[k]}"></label>`).join('');
+    };
+    render();
+    const persist = () => { try { localStorage.setItem(flowKey, JSON.stringify(flow.p)); } catch {} };
+    box.addEventListener('input', (ev) => {
+      const k = ev.target.dataset.k; if (!k) return;
+      const v = +ev.target.value; $(`tv-${k}`).textContent = v; flow.setParams({ [k]: v }); persist();
+    });
+    $('flow-tune').addEventListener('click', () => { $('tuner').hidden = !$('tuner').hidden; });
+    $('tuner-reset').addEventListener('click', () => { flow.setParams({ ...FLOW_DEFAULTS }); persist(); render(); });
+    $('tuner-copy').addEventListener('click', async () => {
+      const txt = JSON.stringify(flow.p, null, 1);
+      $('tuner-out').hidden = false; $('tuner-out').textContent = txt;
+      try { await navigator.clipboard.writeText(txt); $('tuner-copy').textContent = 'Copied ✓'; } catch {}
+    });
     window.flow = flow;
   }
 

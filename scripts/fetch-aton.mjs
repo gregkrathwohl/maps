@@ -22,10 +22,12 @@ for (const [id, kind] of Object.entries(layers)) {
 // S-57 colour codes → names; chart-style short labels ("R 8", "G 9", "A")
 const COLOURS = { 1: 'white', 2: 'black', 3: 'red', 4: 'green', 5: 'blue', 6: 'yellow', 11: 'orange' };
 const near = (a, b) => Math.hypot((a[0] - b[0]) * 79000, (a[1] - b[1]) * 111000) < 15;
-const marks = features.filter(f => f.properties.kind !== 'daymark' && f.properties.kind !== 'light');
+// skip: daymarks (duplicates of their beacons) and the Richardson Bay special-anchorage buoys (not useful here)
+const marks = features.filter(f => f.properties.kind !== 'daymark' && f.properties.kind !== 'light' && !/Special Anchorage/.test(f.properties.OBJNAM || ''));
 // a light usually sits on a beacon/buoy already listed; keep only standalone lights
+const skipped = features.filter(f => /Special Anchorage/.test(f.properties.OBJNAM || ''));
 for (const f of features.filter(f => f.properties.kind === 'light'))
-  if (!marks.some(m => near(m.geometry.coordinates, f.geometry.coordinates))) marks.push(f);
+  if (![...marks, ...skipped].some(m => near(m.geometry.coordinates, f.geometry.coordinates))) marks.push(f);
 const out = marks.map(f => {
   const p = f.properties, name = p.OBJNAM || '';
   const colour = COLOURS[String(p.COLOUR || '').split(',')[0]] || (p.kind === 'light' ? 'light' : 'other');
