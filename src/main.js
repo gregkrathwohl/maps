@@ -5,6 +5,8 @@ import { buildStyle, outsideMask } from './style.js';
 import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
+import { Router } from './router.js';
+import { resolver, buildTrip, summary } from './trips.js';
 
 window.maplibregl = maplibregl;
 const place = new URLSearchParams(location.search).get('place') || 'marin-headlands';
@@ -12,7 +14,7 @@ const base = `places/${place}`;
 
 const empty = { type: 'FeatureCollection', features: [] };
 const optional = (url) => fetch(url).then(r => (r.ok ? r.json() : empty)).catch(() => empty);
-const [cfg, osm, labels, currents, routes, aton, coastLines] = await Promise.all([
+const [cfg, osm, labels, currents, routes, aton, coastLines, ripples, trips] = await Promise.all([
   fetch(`${base}/place.json`).then(r => r.json()),
   fetch(`${base}/data/osm.geojson`).then(r => r.json()),
   fetch(`${base}/labels.json`).then(r => (r.ok ? r.json() : [])),
@@ -20,12 +22,15 @@ const [cfg, osm, labels, currents, routes, aton, coastLines] = await Promise.all
   optional(`${base}/data/routes.geojson`),
   optional(`${base}/data/aton.geojson`),
   optional(`${base}/data/coast.geojson`),
+  optional(`${base}/data/ripples.geojson`),
+  fetch(`${base}/trips.json`).then(r => (r.ok ? r.json() : [])).catch(() => []),
 ]);
 const bay = cfg.style === 'bay';
 if (bay) document.querySelector('.key').innerHTML = `
   <div class="k"><i class="sw kayak"></i>Launch / landing</div>
   <div class="k"><i class="sw depth"></i>Depth, shallow → deep</div>
-  <div class="k"><i class="sw isobath"></i>Depth contour, 20 ft</div>
+  <div class="k"><i class="sw isobath"></i>Depth contour, 20 ft · or shore ripples</div>
+  <div class="k"><i class="sw trail dashed"></i>Paddling route, nautical miles</div>
   <div class="k"><i class="sw buoy red"></i><i class="sw buoy green"></i>Buoys &amp; markers</div>
   <div class="k"><i class="sw fill beach"></i>Beach</div>
   <div class="k"><i class="sw fill os"></i>Park land</div>
@@ -56,10 +61,11 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
   elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours', overzoom: 1,
 });
 
-const state = { mode: 'web', hillshade: false };
+const state = { mode: 'web', hillshade: false, waterMode: 'ripples', trip: empty };
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
+  ripples, trips: state.trip, waterMode: state.waterMode,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade, handNames });
 
 const [w, s, e, n] = cfg.bbox;
@@ -116,5 +122,66 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
   layer.setMode(state.mode);
 }));
 $('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; map.setStyle(style(), { diff: false }); });
+
+// --- bay maps: water texture switch, saved routes, route planner
+if (bay) {
+  const router = await Router.load(base);
+  const resolve = resolver(osm, aton);
+  const waterSel = $('water-mode'), tripSel = $('trip-select'), planner = $('planner');
+  waterSel.hidden = tripSel.hidden = false;
+  waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; map.setStyle(style(), { diff: false }); });
+
+  const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
+  const renderPanel = (t, title) => {
+    const sm = summary(t);
+    $('pl-title').textContent = title;
+    $('pl-total').textContent = t.legs.length ? sm.total : '';
+    $('pl-legs').innerHTML = sm.legs.map(l => `<li>${l}</li>`).join('');
+  };
+  tripSel.innerHTML = `<option value="">No route</option>` +
+    trips.map((t, i) => `<option value="${i}">${t.name}</option>`).join('') + `<option value="plan">Plan a route…</option>`;
+
+  let plan = [];
+  const planning = () => tripSel.value === 'plan';
+  const refresh = () => {
+    if (planning()) { const t = buildTrip(router, plan); showTrip(t); renderPanel(t, 'Plan a route'); return; }
+    if (tripSel.value === '') { showTrip({ geojson: empty }); planner.hidden = true; return; }
+    const trip = trips[+tripSel.value];
+    const t = buildTrip(router, trip.stops.map(resolve).filter(Boolean));
+    showTrip(t); renderPanel(t, trip.name);
+  };
+  tripSel.addEventListener('change', () => {
+    planner.hidden = tripSel.value === '';
+    document.body.classList.toggle('planning', planning());
+    for (const el of ['pl-undo', 'pl-clear', 'pl-save']) $(el).hidden = !planning();
+    planner.querySelector('.hint').hidden = !planning();
+    refresh();
+  });
+  $('pl-buf').addEventListener('input', (ev) => { $('pl-buf-val').textContent = ev.target.value; router?.setBuffer(+ev.target.value); refresh(); });
+  $('pl-undo').addEventListener('click', () => { plan.pop(); refresh(); });
+  $('pl-clear').addEventListener('click', () => { plan = []; refresh(); });
+  $('pl-save').addEventListener('click', async () => {
+    if (plan.length < 2) return;
+    const name = prompt('Name this route'); if (!name) return;
+    trips.push({ name, stops: plan.map(p => p.ref) });
+    await fetch(`${base}/trips.json`, { method: 'PUT', body: JSON.stringify(trips, null, 1) });
+    const i = trips.length - 1;
+    tripSel.insertAdjacentHTML('beforeend', '');
+    tripSel.querySelector('option[value="plan"]').insertAdjacentHTML('beforebegin', `<option value="${i}">${name}</option>`);
+    plan = []; tripSel.value = String(i); tripSel.dispatchEvent(new Event('change'));
+  });
+  // clicks near a buoy, beacon or launch snap to it (and are saved by name)
+  map.on('click', (ev) => {
+    if (!planning() || layer.editing) return;
+    const p = ev.point, box = [[p.x - 12, p.y - 12], [p.x + 12, p.y + 12]];
+    const hit = map.queryRenderedFeatures(box, { layers: ['buoy', 'beacon', 'launch'].filter(id => map.getLayer(id)) })[0];
+    if (hit?.properties.name && hit.source === 'aton') plan.push({ at: hit.geometry.coordinates, name: hit.properties.label, ref: `aton:${hit.properties.name}` });
+    else if (hit?.properties.name && hit.source === 'routes') plan.push({ at: hit.geometry.coordinates, name: hit.properties.name, ref: hit.geometry.coordinates });
+    else { const at = [+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)]; plan.push({ at, name: null, ref: at }); }
+    refresh();
+  });
+  // a full style reload (Web/Paper, water switch) drops the route data: put it back
+  map.on('style.load', () => map.getSource('trips')?.setData(state.trip));
+}
 
 window.map = map; // for poking at in devtools

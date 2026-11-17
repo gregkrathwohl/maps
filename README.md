@@ -29,3 +29,14 @@ Pipeline:
 - Blender hillshade: USGS 3DEP export for the bbox → rasterio → `blender -b -P` → georeferenced PNG layer.
   Local first (M2, 8 GB RAM: keep DEM ≲ 4000 px), later GitHub Actions.
 - One-click render: same design → PDF poster / foldable / in-app raster tiles, all georeferenced.
+
+## Water maps (style: "bay")
+
+    node scripts/fetch-osm.mjs <place>     # OSM incl. coastline, beaches, launches
+    node scripts/fetch-aton.mjs <place>    # NOAA ENC buoys/beacons (+ places/<place>/aton-extra.json)
+    node scripts/coast.mjs <place>         # join + smooth coastline
+    node scripts/water.mjs <place>         # land mask → distance field → ripples.geojson + navgrid (router)
+    node scripts/routes.mjs <place>        # launch/landing spots from routes.json
+
+Saved routes live in `places/<place>/trips.json` (stops: "aton:<name>", "osm:<name>" or [lon,lat]);
+the in-browser planner routes legs around land (A* on navgrid, ≥ N m off shore) and saves back to it.

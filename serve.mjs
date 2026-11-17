@@ -17,9 +17,9 @@ http.createServer((req, res) => {
   const file = path.join(root, decodeURIComponent(url.pathname));
   if (!file.startsWith(root)) return res.writeHead(403).end();
 
-  // PUT /places/<place>/labels.json — save from the label editor
+  // PUT /places/<place>/labels.json | trips.json — save from the label editor / route planner
   if (req.method === 'PUT') {
-    if (!/^\/places\/[\w-]+\/labels\.json$/.test(url.pathname)) return res.writeHead(403).end();
+    if (!/^\/places\/[\w-]+\/(labels|trips)\.json$/.test(url.pathname)) return res.writeHead(403).end();
     let body = '';
     req.on('data', c => (body += c));
     req.on('end', () => {

@@ -22,7 +22,7 @@ export const bayPalette = {
   outside: '#ece9e1',
 };
 
-export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, coastLines, contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
+export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, coastLines, ripples, trips, waterMode = 'ripples', contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
   const paper = mode === 'paper';
   const W = (base, k = null) => {
     const v = (x) => (k ? ['*', k, x] : x);
@@ -34,7 +34,6 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     ? ['interpolate', ['exponential', 2], ['zoom'], designZoom - 6, base / 64, designZoom + 6, base * 64]
     : ['interpolate', ['linear'], ['zoom'], 11, base * 0.8, 14, base, 17, base * 1.3];
   // line offsets in px scale with paper too
-  const O = (px) => (paper ? W(px) : ['interpolate', ['linear'], ['zoom'], 11, px * 0.5, 14, px, 17, px * 1.6]);
   const minz = (z) => (paper ? 0 : z);
   const hw = (...v) => ['match', ['get', 'highway'], v, true, false];
   const notHand = ['!', ['in', ['coalesce', ['get', 'name'], ''], ['literal', handNames]]];
@@ -66,24 +65,29 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     { id: 'depth', type: 'color-relief', source: 'dem',
       paint: { 'color-relief-opacity': 0.6, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
         -80, '#7fb1cf', -40, '#98c2db', -20, '#b0d2e3', -8, '#c4dfea', -2, '#d3e8ef', -0.3, 'rgba(214,234,240,0)', 0, 'rgba(0,0,0,0)'] } },
-    { id: 'isobath', type: 'line', source: 'contours', 'source-layer': 'contours',
-      filter: ['<', ['get', 'ele'], 0],
-      paint: { 'line-color': c.isobath, 'line-width': W(0.4, ['case', ['>', ['get', 'level'], 0], 1.75, 1]), 'line-opacity': 0.55 } },
-    { id: 'isobath-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: minz(14),
-      filter: ['all', ['<', ['get', 'ele'], 0], ['>', ['get', 'level'], 0]],
-      layout: { 'symbol-placement': 'line', 'text-field': ['concat', ['to-string', ['abs', ['get', 'ele']]], ' ft'],
-        'text-font': FONT.italic, 'text-size': T(8.5), 'symbol-spacing': 450 },
-      paint: { 'text-color': c.isobath, 'text-halo-color': c.water, 'text-halo-width': 1.2 } },
     { id: 'marsh', type: 'fill', source: 'osm', minzoom: minz(12), filter: ['==', ['get', 'natural'], 'wetland'],
       paint: { 'fill-pattern': 'marsh' } },
     { id: 'beach', type: 'fill', source: 'osm', minzoom: minz(12),
       filter: ['match', ['coalesce', ['get', 'natural'], ''], ['beach', 'sand'], true, false], paint: { 'fill-pattern': 'stipple' } },
 
-    // ---- waterlining: old-chart ripples stepping out from the shore
-    ...[[3, 0.55], [7, 0.35], [12, 0.22], [18, 0.12]].map(([off, op], i) => ({
-      id: `waterline-${i}`, type: 'line', source: 'coast',
+    // ---- water texture: depth contours and/or ripples (waterMode: 'ripples' | 'depth' | 'both')
+    ...(waterMode !== 'ripples' ? [
+    { id: 'isobath', type: 'line', source: 'contours', 'source-layer': 'contours',
+      filter: ['<', ['get', 'ele'], 0],
+      paint: { 'line-color': c.isobath, 'line-width': W(0.4, ['case', ['>', ['get', 'level'], 0], 1.75, 1]), 'line-opacity': 0.55 } },
+      { id: 'isobath-label', type: 'symbol', source: 'contours', 'source-layer': 'contours', minzoom: minz(14),
+      filter: ['all', ['<', ['get', 'ele'], 0], ['>', ['get', 'level'], 0]],
+      layout: { 'symbol-placement': 'line', 'text-field': ['concat', ['to-string', ['abs', ['get', 'ele']]], ' ft'],
+        'text-font': FONT.italic, 'text-size': T(8.5), 'symbol-spacing': 450 },
+      paint: { 'text-color': c.isobath, 'text-halo-color': c.water, 'text-halo-width': 1.2 } },
+    ] : []),
+    // ripples are true buffers around the land (scripts/water.mjs), so they live in metres:
+    // they scale with Paper mode and merge in narrow inlets instead of crossing
+    ...(waterMode !== 'depth' ? [{
+      id: 'ripple', type: 'line', source: 'ripples', minzoom: minz(11.5),
       layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': c.waterline, 'line-width': W(0.6), 'line-opacity': op, 'line-offset': O(off) } })),
+      paint: { 'line-color': c.waterline, 'line-width': W(0.6),
+        'line-opacity': ['match', ['get', 'step'], 0, 0.55, 1, 0.38, 2, 0.24, 0.13] } }] : []),
     { id: 'coast', type: 'line', source: 'coast',
       layout: { 'line-join': 'round', 'line-cap': 'round' },
       paint: { 'line-color': c.coast, 'line-width': W(1.1) } },
@@ -102,6 +106,21 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
       filter: ['match', ['coalesce', ['get', 'man_made'], ''], ['pier', 'breakwater', 'groyne'], true, false],
       paint: { 'line-color': '#8a8273', 'line-width': W(1.4) } },
     { id: 'outside', type: 'fill', source: 'mask', paint: { 'fill-color': c.outside, 'fill-opacity': 0 } },
+
+    // ---- the selected route (saved trip or the planner): trail red, dashed, with a white edge
+    { id: 'trip-casing', type: 'line', source: 'trips', filter: ['==', ['get', 'kind'], 'leg'],
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': 'rgba(255,255,255,0.75)', 'line-width': W(4) } },
+    { id: 'trip', type: 'line', source: 'trips', filter: ['==', ['get', 'kind'], 'leg'],
+      layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': c.route, 'line-width': W(2), 'line-dasharray': [2.5, 1.6] } },
+    { id: 'trip-stop', type: 'circle', source: 'trips', filter: ['==', ['get', 'kind'], 'stop'],
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 5], 'circle-color': '#fff',
+        'circle-stroke-color': c.route, 'circle-stroke-width': 1.6 } },
+    { id: 'trip-distance', type: 'symbol', source: 'trips', filter: ['==', ['get', 'kind'], 'mid'],
+      layout: { 'text-field': ['get', 'label'], 'text-font': FONT.bold,
+        'text-size': T(11), 'text-allow-overlap': true },
+      paint: { 'text-color': c.route, 'text-halo-color': 'rgba(255,255,255,0.92)', 'text-halo-width': 1.8 } },
 
     // ---- aids to navigation (NOAA ENC): buoys as discs, beacons as small squares, chart-style labels
     // markers deep in Richardson Bay wait until you zoom in
@@ -146,6 +165,8 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
       currents: { type: 'geojson', data: currents, lineMetrics: true },
       routes: { type: 'geojson', data: routes },
       aton: { type: 'geojson', data: aton },
+      trips: { type: 'geojson', data: trips || { type: 'FeatureCollection', features: [] } },
+      ripples: { type: 'geojson', data: ripples || { type: 'FeatureCollection', features: [] } },
       // joined + smoothed coastline (scripts/coast.mjs); falls back to raw OSM coastline
       coast: { type: 'geojson', data: coastLines?.features?.length ? coastLines
         : { type: 'FeatureCollection', features: osm.features.filter(f => f.properties.natural === 'coastline') } },
