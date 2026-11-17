@@ -67,7 +67,7 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
         -80, '#5f9cc4', -40, '#7fb1d3', -20, '#9cc5df', -8, '#b3d3e5', -2, '#c6dfea', -0.3, 'rgba(205,228,236,0)', 0, 'rgba(0,0,0,0)'] } },
     // a tunable darkening of all water (the "Water tone" slider), under the texture and streaks
     { id: 'water-shade', type: 'fill', source: 'ofm', 'source-layer': 'water',
-      paint: { 'fill-color': '#1d4f72', 'fill-opacity': waterShade } },
+      paint: { 'fill-color': '#4f95c8', 'fill-opacity': waterShade } }, // a clear blue, so turning it up reads bluer, not greyer
     { id: 'marsh', type: 'fill', source: 'osm', minzoom: minz(12), filter: ['==', ['get', 'natural'], 'wetland'],
       paint: { 'fill-pattern': 'marsh' } },
     { id: 'beach', type: 'fill', source: 'osm', minzoom: minz(12),

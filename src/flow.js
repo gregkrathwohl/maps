@@ -21,10 +21,10 @@ export const DEFAULTS = {
   speed: 380,       // streaks move this many times faster than the water
   zoomEase: 0.85,   // past zoom 13.5, how much to damp the real-speed increase (0 = none, 1 = constant on screen)
   compress: 0.65,   // visual speed ∝ speed^compress (lower = slow water moves more)
-  trail: 0.835,     // per-frame trail fade (higher = longer streaks)
+  trail: 0.865,     // per-frame trail fade (higher = longer streaks)
   opacity: 2,       // overall streak opacity (multiplier; capped at fully opaque)
-  width: 0.3,       // overall streak width (multiplier)
-  life: 200,        // average particle life in frames
+  width: 0.4,       // overall streak width (multiplier)
+  life: 20,         // average particle life in frames (short = no clumped 'tide lines' from particles bunching up)
 };
 
 export class FlowLayer {

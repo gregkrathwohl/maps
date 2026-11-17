@@ -63,9 +63,9 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 });
 
 // settings: the place's defaults, then whatever you chose last time on this place (localStorage)
-const prefsKey = `trail-cartography:v2:${place}`; // bump vN when the defaults change
+const prefsKey = `trail-cartography:v3:${place}`; // bump vN when the defaults change
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
-const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0.1, currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
+const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
 const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
 const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty };
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
@@ -220,7 +220,7 @@ if (bay) {
     $('flow-toggle').hidden = false;
     // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
     // No frozen state: shown means moving.
-    const flowKey = 'trail-cartography:flow';
+    const flowKey = 'trail-cartography:flow:v2'; // bump when DEFAULTS change
     const savedFlow = (() => { try { return JSON.parse(localStorage.getItem(flowKey) || '{}'); } catch { return {}; } })();
     const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
@@ -265,7 +265,12 @@ if (bay) {
       const v = +ev.target.value; $(`tv-${k}`).textContent = v; flow.setParams({ [k]: v }); persist();
     });
     $('flow-tune').addEventListener('click', () => { $('tuner').hidden = !$('tuner').hidden; });
-    $('tuner-reset').addEventListener('click', () => { flow.setParams({ ...FLOW_DEFAULTS }); persist(); render(); });
+    $('tuner-reset').addEventListener('click', () => {
+      flow.setParams({ ...FLOW_DEFAULTS }); persist();
+      const shade = cfg.defaults?.waterShade ?? 0; savePrefs({ waterShade: shade });
+      if (map.getLayer('water-shade')) map.setPaintProperty('water-shade', 'fill-opacity', shade);
+      render();
+    });
     $('tuner-copy').addEventListener('click', async () => {
       const txt = JSON.stringify({ ...flow.p, waterShade: prefs.waterShade }, null, 1);
       $('tuner-out').hidden = false; $('tuner-out').textContent = txt;

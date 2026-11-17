@@ -65,6 +65,6 @@
   "hillshade": true,
   "currents": true,
   "waterMode": "depth",
-  "waterShade": 0.1
+  "waterShade": 0
  }
 }
