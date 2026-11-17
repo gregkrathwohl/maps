@@ -34,10 +34,11 @@ const out = marks.map(f => {
   // friendly label for the big channel marks: "Harding Rock HR", "Raccoon Strait G 3", "Cone Rock"
   const where = name.replace(/\s*(Lighted |Light )?(Bell |Whistle |Gong )?(Buoy|Daybeacon|Light)(\s+[A-Z0-9]+)?$/, '')
     .replace(/^San Francisco Bay /, '').trim();
-  const inner = /^Richardson Bay|^$/.test(name) && p.kind !== 'light';
+  const anchorage = name.match(/Special Anchorage .*Buoy ([A-Z])$/)?.[1];
+  const inner = /^Richardson Bay|^$/.test(name) && p.kind !== 'light' && !anchorage;
   // lettered marks (HR, AZ, A) read better as their letters alone: Harding Rock "HR"
   const mark = num && /^[A-Z]+$/.test(num) ? `“${num}”` : short;
-  const label = inner ? short : where && where !== short ? (num ? `${where} ${mark}` : where) : short;
+  const label = anchorage ? `Anchorage ${anchorage}` : inner ? short : where && where !== short ? (num ? `${where} ${mark}` : where) : short;
   return { type: 'Feature', geometry: f.geometry,
     properties: { kind: p.kind, name, colour, short, label, inner, buoy: p.kind.startsWith('buoy') } };
 });

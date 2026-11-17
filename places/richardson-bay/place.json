@@ -55,5 +55,10 @@
    -122.4,
    37.895
   ]
+ },
+ "defaults": {
+  "mode": "paper",
+  "hillshade": true,
+  "currents": true
  }
 }

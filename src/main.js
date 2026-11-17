@@ -62,7 +62,14 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
   elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours', overzoom: 1,
 });
 
-const state = { mode: 'web', hillshade: false, waterMode: 'ripples', trip: empty };
+// settings: the place's defaults, then whatever you chose last time on this place (localStorage)
+const prefsKey = `trail-cartography:${place}`;
+const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
+const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
+const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
+const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty };
+document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
+document.getElementById('hillshade').checked = state.hillshade;
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
@@ -117,12 +124,12 @@ map.on('click', (ev) => {
 
 // --- toolbar
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
-  state.mode = b.dataset.mode;
+  state.mode = b.dataset.mode; savePrefs({ mode: state.mode });
   document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
   map.setStyle(style(), { diff: false });
   layer.setMode(state.mode);
 }));
-$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; map.setStyle(style(), { diff: false }); });
+$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); map.setStyle(style(), { diff: false }); });
 
 // --- bay maps: water texture switch, saved routes, route planner
 if (bay) {
@@ -130,7 +137,8 @@ if (bay) {
   const resolve = resolver(osm, aton);
   const waterSel = $('water-mode'), tripSel = $('trip-select'), planner = $('planner');
   waterSel.hidden = tripSel.hidden = false;
-  waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; map.setStyle(style(), { diff: false }); });
+  waterSel.value = state.waterMode;
+  waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; savePrefs({ waterMode: state.waterMode }); map.setStyle(style(), { diff: false }); });
 
   const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
   const renderPanel = (t, title) => {
@@ -208,17 +216,20 @@ if (bay) {
   // --- NOAA SFBOFS currents: pale moving streaks, time slider
   const flowData = await fetch(`${base}/data/currents-sfbofs.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
   if (flowData) {
-    const slider = $('flow-time'), label = $('flow-label'), playBtn = $('flow-play');
-    $('flow-toggle').hidden = false; $('flow-panel').hidden = false;
-    // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label
+    const slider = $('flow-time'), label = $('flow-label'), onBox = $('flow-on'), colourBox = $('flow-colour');
+    $('flow-toggle').hidden = false;
+    // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
+    // No frozen state: shown means moving.
     const flow = new FlowLayer(map, flowData, { beforeId: 'road', onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
-    map.once('idle', () => flow.still());
     slider.addEventListener('input', () => flow.setTime(+slider.value));
     $('flow-now').addEventListener('click', () => flow.setTime(flow.nowIndex()));
-    playBtn.addEventListener('click', () => { if (flow.playing) { flow.pause(); playBtn.textContent = '▶'; } else { flow.play(); playBtn.textContent = '❚❚'; } });
-    $('flow-on').addEventListener('change', (ev) => { flow.setVisible(ev.target.checked); $('flow-panel').hidden = !ev.target.checked; playBtn.textContent = '▶'; });
+    const show = (on) => { onBox.checked = on; $('flow-panel').hidden = !on; flow.setVisible(on); };
+    onBox.addEventListener('change', () => { show(onBox.checked); savePrefs({ currents: onBox.checked }); });
+    colourBox.checked = prefs.colour; flow.setColour(prefs.colour);
+    colourBox.addEventListener('change', () => { flow.setColour(colourBox.checked); savePrefs({ colour: colourBox.checked }); });
+    show(prefs.currents);
     window.flow = flow;
   }
 

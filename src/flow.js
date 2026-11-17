@@ -1,47 +1,67 @@
 // Animated surface currents from NOAA SFBOFS (scripts/fetch-sfbofs.py).
-// A living background: pale streaks drifting with the water, strength shown as
-// motion (speed and length), never colour. Paused, the last frame stays as a still pattern.
+// A living background: streaks drifting with the water. Strength shows as motion
+// (faster, longer streaks); an optional mode also colours them by speed.
 //
-// The streaks live *in the map*: particles move in map coordinates and are drawn
-// into a canvas that MapLibre stretches over the bay as a canvas source + raster layer.
-// So the layer sits in the style's stacking order (under labels and buoys), pans and
-// zooms with the map without flashing, and moves at a fixed multiple of the real current:
-// slow when zoomed out, faster when zoomed in, like the water itself.
+// The streaks are drawn *in the map*: a canvas that covers the current view (plus a
+// margin) at screen resolution, given to MapLibre as a canvas source + raster layer.
+// So it sits in the style's stacking order (under labels and buoys), stays crisp, and
+// moves with the map while panning; after each pan/zoom it re-fits to the new view.
+// Particles live in lng/lat and move at a fixed multiple of the real current.
 
-const SPEEDUP = 220;   // streaks move ~220× real time (after the √ compression below)
+const SPEEDUP = 420;     // streaks move this many times faster than the water
 const FPS = 30;
+const MARGIN = 0.1;      // canvas reaches 10% beyond the view on each side
+const RAMP = [[0, [79, 143, 192]], [0.4, [70, 167, 140]], [0.8, [226, 177, 60]], [1.3, [212, 85, 58]]];
 
 export class FlowLayer {
   constructor(map, data, { onTime, beforeId } = {}) {
     Object.assign(this, { map, data, onTime, beforeId });
     const [w, , , n] = data.bbox;
-    const lat0 = ((data.bbox[1] + data.bbox[3]) / 2) * Math.PI / 180;
-    this.mx = 111320 * Math.cos(lat0); this.my = 110540;
-    const widthM = data.nx * data.cell, heightM = data.ny * data.cell;
-    this.CW = 2048; this.CH = Math.round(this.CW * heightM / widthM);
-    this.mPerPx = widthM / this.CW;
-    this.coords = [[w, n], [w + widthM / this.mx, n], [w + widthM / this.mx, n - heightM / this.my], [w, n - heightM / this.my]];
+    this.gw = w; this.gn = n;
+    this.gmx = 111320 * Math.cos(((data.bbox[1] + data.bbox[3]) / 2) * Math.PI / 180);
     this.canvas = document.createElement('canvas');
-    this.canvas.width = this.CW; this.canvas.height = this.CH;
     this.ctx = this.canvas.getContext('2d');
-    this.water = []; data.mask.forEach((m, i) => m && this.water.push(i));
-    this.parts = Array.from({ length: 1400 }, () => this.spawn(true));
     this.t = this.nowIndex();
-    this.playing = false; this.visible = true;
+    this.colour = false;
+    this.visible = true;
+    this.fit();
     this.attach();
     map.on('style.load', () => this.attach());
+    map.on('moveend', () => { this.fit(); this.map.getSource('flow')?.setCoordinates(this.coords); });
+    map.on('resize', () => { this.fit(); this.map.getSource('flow')?.setCoordinates(this.coords); });
   }
 
   attach() {
     const { map } = this;
-    if (!map.isStyleLoaded() && !map.getStyle()) return;
-    if (map.getSource('flow')) return;
+    if (!map.getStyle() || map.getSource('flow')) return;
     map.addSource('flow', { type: 'canvas', canvas: this.canvas, coordinates: this.coords, animate: true });
     map.addLayer({ id: 'flow', type: 'raster', source: 'flow',
       layout: { visibility: this.visible ? 'visible' : 'none' },
       paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
       map.getLayer(this.beforeId) ? this.beforeId : undefined);
-    if (!this.playing) map.getSource('flow').pause?.();
+  }
+
+  // re-fit the canvas to the view (in Web Mercator, so lng/lat → pixel is linear in x and in mercator-y)
+  fit() {
+    const c = this.map.getContainer(), W = c.clientWidth, H = c.clientHeight;
+    const mW = W * MARGIN, mH = H * MARGIN;
+    // screen resolution, but keep the texture re-uploaded every frame under ~4 MP
+    const r = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(4e6 / ((W + 2 * mW) * (H + 2 * mH))));
+    const tl = this.map.unproject([-mW, -mH]), br = this.map.unproject([W + mW, H + mH]);
+    this.west = tl.lng; this.east = br.lng; this.north = tl.lat; this.south = br.lat;
+    this.CW = Math.round((W + 2 * mW) * r); this.CH = Math.round((H + 2 * mH) * r);
+    this.canvas.width = this.CW; this.canvas.height = this.CH;
+    this.pxScale = r;
+    this.coords = [[this.west, this.north], [this.east, this.north], [this.east, this.south], [this.west, this.south]];
+    this.my0 = this.mercY(this.north); this.my1 = this.mercY(this.south);
+    const latMid = (this.north + this.south) / 2;
+    this.mPerPx = ((this.east - this.west) * 111320 * Math.cos(latMid * Math.PI / 180)) / this.CW;
+    const count = Math.round((W * H) / 560);
+    this.parts = Array.from({ length: count }, () => this.spawn(true));
+  }
+  mercY(lat) { const r = lat * Math.PI / 180; return Math.log(Math.tan(Math.PI / 4 + r / 2)); }
+  toPx(lng, lat) {
+    return [((lng - this.west) / (this.east - this.west)) * this.CW, ((this.my0 - this.mercY(lat)) / (this.my0 - this.my1)) * this.CH];
   }
 
   nowIndex() {
@@ -51,78 +71,95 @@ export class FlowLayer {
     return best;
   }
 
-  // velocity (m/s) at canvas pixel (x, y), bilinear in space and linear in time
-  vel(x, y) {
-    const d = this.data, gx = (x * this.mPerPx) / d.cell - 0.5, gy = (y * this.mPerPx) / d.cell - 0.5;
+  // velocity (m/s) at lng/lat: bilinear in space (water cells only), linear in time
+  vel(lng, lat) {
+    const d = this.data, gx = ((lng - this.gw) * this.gmx) / d.cell - 0.5, gy = ((this.gn - lat) * 110540) / d.cell - 0.5;
     const x0 = Math.floor(gx), y0 = Math.floor(gy), fx = gx - x0, fy = gy - y0;
     const t0 = Math.floor(this.t), t1 = Math.min(d.times.length - 1, t0 + 1), ft = this.t - t0;
-    let u = 0, v = 0, wsum = 0;
+    let u = 0, v = 0, ws = 0;
     for (const [cx, cy, wt] of [[x0, y0, (1 - fx) * (1 - fy)], [x0 + 1, y0, fx * (1 - fy)], [x0, y0 + 1, (1 - fx) * fy], [x0 + 1, y0 + 1, fx * fy]]) {
       if (cx < 0 || cy < 0 || cx >= d.nx || cy >= d.ny) continue;
       const i = cy * d.nx + cx;
       if (!d.mask[i]) continue;
       u += wt * (d.u[t0][i] * (1 - ft) + d.u[t1][i] * ft);
       v += wt * (d.v[t0][i] * (1 - ft) + d.v[t1][i] * ft);
-      wsum += wt;
+      ws += wt;
     }
-    if (wsum < 0.3) return null; // mostly land
-    return [u / wsum / 100, v / wsum / 100];
+    if (ws < 0.3) return null;
+    return [u / ws / 100, v / ws / 100];
   }
 
-  // spawn anywhere on water, evenly by area
   spawn(randomAge = false) {
-    const d = this.data, i = this.water[(Math.random() * this.water.length) | 0];
-    const cellPx = d.cell / this.mPerPx;
-    return { x: ((i % d.nx) + Math.random()) * cellPx, y: (((i / d.nx) | 0) + Math.random()) * cellPx,
-      age: randomAge ? (Math.random() * 60) | 0 : 0, life: 40 + ((Math.random() * 40) | 0) };
+    for (let tries = 0; tries < 8; tries++) {
+      const lng = this.west + Math.random() * (this.east - this.west);
+      const lat = this.south + Math.random() * (this.north - this.south);
+      if (this.vel(lng, lat)) return { lng, lat, age: randomAge ? (Math.random() * 50) | 0 : 0, life: 50 + ((Math.random() * 50) | 0) };
+    }
+    return { lng: 0, lat: 0, age: 999, life: 0 }; // over land: retry next frame
+  }
+
+  colourFor(sp, a) {
+    let c = RAMP[RAMP.length - 1][1];
+    for (let i = 1; i < RAMP.length; i++) if (sp <= RAMP[i][0]) {
+      const [s0, c0] = RAMP[i - 1], [s1, c1] = RAMP[i], f = (sp - s0) / (s1 - s0);
+      c = c0.map((v, k) => Math.round(v + (c1[k] - v) * f)); break;
+    }
+    return `rgba(${c[0]},${c[1]},${c[2]},${a.toFixed(3)})`;
   }
 
   step() {
-    const ctx = this.ctx, k = (SPEEDUP / FPS) / this.mPerPx; // canvas px per frame per m/s
-    ctx.globalCompositeOperation = 'destination-in';     // fade trails → short streaks
-    ctx.fillStyle = 'rgba(0,0,0,0.92)';
+    const ctx = this.ctx, r = this.pxScale;
+    ctx.globalCompositeOperation = 'destination-in';
+    ctx.fillStyle = 'rgba(0,0,0,0.93)';
     ctx.fillRect(0, 0, this.CW, this.CH);
     ctx.globalCompositeOperation = 'source-over';
     ctx.lineCap = 'round';
+    const mPerFrame = SPEEDUP / FPS;
     for (const p of this.parts) {
-      const vel = this.vel(p.x, p.y);
-      if (!vel || ++p.age > p.life) { Object.assign(p, this.spawn()); continue; }
+      const vel = p.age <= p.life && this.vel(p.lng, p.lat);
+      if (!vel) { Object.assign(p, this.spawn()); continue; }
+      p.age++;
       const sp = Math.hypot(vel[0], vel[1]);
-      // compress the range: visual speed ∝ √speed, so 0.1 m/s shallows still drift visibly
-      // while the 1+ m/s channels stay clearly faster and longer
-      const vis = sp > 1e-4 ? Math.sqrt(sp / 1.2) * 1.2 / sp : 0;
-      const nx = p.x + vel[0] * vis * k, ny = p.y - vel[1] * vis * k;
-      // fade in and out over a particle's life; weak water still visible (sqrt lifts the slow end)
+      // visual speed ∝ speed^0.45: slow shallows still drift visibly, channels stay clearly faster
+      const vis = sp > 1e-4 ? (1.2 * Math.pow(sp / 1.2, 0.45)) / sp : 0;
+      const dE = vel[0] * vis * mPerFrame, dN = vel[1] * vis * mPerFrame;
+      const lng2 = p.lng + dE / (111320 * Math.cos(p.lat * Math.PI / 180)), lat2 = p.lat + dN / 110540;
+      const [x1, y1] = this.toPx(p.lng, p.lat), [x2, y2] = this.toPx(lng2, lat2);
       const life = Math.min(1, p.age / 8, (p.life - p.age) / 8);
-      const a = life * (0.35 + 0.45 * Math.min(1, Math.sqrt(sp / 1.2)));
-      ctx.strokeStyle = `rgba(255,255,255,${a.toFixed(3)})`;
-      ctx.lineWidth = 1.1 + 0.6 * Math.min(1, sp / 1.2);
-      ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nx + 0.01, ny); ctx.stroke();
-      p.x = nx; p.y = ny;
+      const strength = Math.min(1, Math.sqrt(sp / 1.2));
+      const width = (1.1 + 0.7 * strength) * r;
+      if (this.colour) {
+        ctx.strokeStyle = this.colourFor(sp, life * 0.85); ctx.lineWidth = width;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      } else {
+        // white core with a faint blue-grey edge, so streaks read on pale shallow water too
+        ctx.strokeStyle = `rgba(30,70,110,${(life * 0.14).toFixed(3)})`; ctx.lineWidth = width + 1.4 * r;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        ctx.strokeStyle = `rgba(255,255,255,${(life * (0.6 + 0.35 * strength)).toFixed(3)})`; ctx.lineWidth = width;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+      }
+      p.lng = lng2; p.lat = lat2;
     }
   }
 
-  // frozen frame with trails: run the flow briefly without showing every step
-  still() { this.ctx.clearRect(0, 0, this.CW, this.CH); for (let s = 0; s < 30; s++) this.step(); this.map.triggerRepaint(); this.map.getSource('flow')?.play?.(); setTimeout(() => { if (!this.playing) this.map.getSource('flow')?.pause?.(); }, 100); }
-
-  play() {
-    if (this.playing) return;
-    this.playing = true;
-    this.map.getSource('flow')?.play?.();
+  start() {
+    if (this.running) return;
+    this.running = true;
     let last = 0;
     const loop = (ts) => {
-      if (!this.playing) return;
+      if (!this.running) return;
       if (ts - last >= 1000 / FPS) { this.step(); last = ts; }
       this.raf = requestAnimationFrame(loop);
     };
     this.raf = requestAnimationFrame(loop);
   }
-  pause() { this.playing = false; cancelAnimationFrame(this.raf); this.map.getSource('flow')?.pause?.(); }
-  setTime(t) { this.t = t; this.onTime?.(t); if (!this.playing) this.still(); }
+  stop() { this.running = false; cancelAnimationFrame(this.raf); }
+  setTime(t) { this.t = t; this.onTime?.(t); }
+  setColour(on) { this.colour = on; }
   setVisible(on) {
     this.visible = on;
     if (this.map.getLayer('flow')) this.map.setLayoutProperty('flow', 'visibility', on ? 'visible' : 'none');
-    if (!on) this.pause();
+    if (on) this.start(); else this.stop();
   }
 }
 
