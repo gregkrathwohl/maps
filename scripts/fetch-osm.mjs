@@ -51,6 +51,8 @@ fs.mkdirSync(`places/${place}/data`, { recursive: true });
 const keys = /^(highway|natural|landuse|leisure|boundary|waterway|building|military|historic|amenity|tourism|man_made|place|bridge|name|seamark:type|canoe)$/;
 gj.features = gj.features
   .filter(f => Object.keys(f.properties).some(k => keys.test(k)))
+  // water maps never draw buildings: leave them out (they're most of a city's data)
+  .filter(f => cfg.style !== 'bay' || !(f.properties.building && !f.properties.name && !f.properties.historic && !f.properties.amenity))
   .map(f => ({ type: 'Feature', geometry: f.geometry, properties: { ...f.properties, _id: f.id ?? f.properties.id } }));
 fs.writeFileSync(out, JSON.stringify(gj));
 console.log(out, gj.features.length, 'features', (fs.statSync(out).size / 1e6).toFixed(1) + 'MB');

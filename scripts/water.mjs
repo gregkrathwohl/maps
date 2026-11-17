@@ -83,11 +83,31 @@ function chaikin(p) {
   out.push(out[0]);
   return out;
 }
+// Douglas–Peucker, tolerance in cells (0.25 × 6 m = 1.5 m)
+function simplify(pts, tol) {
+  if (pts.length < 3) return pts;
+  const [fx, fy] = pts[0], [lx, ly] = pts[pts.length - 1];
+  if (fx === lx && fy === ly) { // closed ring: split at the point farthest from the start, simplify both halves
+    let m = 1, md = -1;
+    pts.forEach(([x, y], i) => { const d = (x - fx) ** 2 + (y - fy) ** 2; if (d > md) { md = d; m = i; } });
+    return simplify(pts.slice(0, m + 1), tol).concat(simplify(pts.slice(m), tol).slice(1));
+  }
+  const keep = new Uint8Array(pts.length); keep[0] = keep[pts.length - 1] = 1;
+  const stack = [[0, pts.length - 1]];
+  while (stack.length) {
+    const [a, b] = stack.pop(); const [ax, ay] = pts[a], [bx, by] = pts[b];
+    const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1;
+    let best = -1, bd = tol;
+    for (let i = a + 1; i < b; i++) { const d = Math.abs(dy * (pts[i][0] - ax) - dx * (pts[i][1] - ay)) / L; if (d > bd) { bd = d; best = i; } }
+    if (best > 0) { keep[best] = 1; stack.push([a, best], [best, b]); }
+  }
+  return pts.filter((_, i) => keep[i]);
+}
 const features = [];
 for (const c of contours().size([W, H]).thresholds(RIPPLES)(Array.from(dist))) {
   for (const poly of c.coordinates) for (const ring of poly) {
     if (ring.length < 12) continue; // specks
-    let r = ring; for (let k = 0; k < 3; k++) r = chaikin(r);
+    let r = simplify(ring, 0.25); for (let k = 0; k < 3; k++) r = chaikin(r); r = simplify(r, 0.12);
     // the tracer closes rings along the grid edge: cut those stretches out
     const edge = ([x, y]) => x < 2 || y < 2 || x > W - 2 || y > H - 2;
     let run = [];
