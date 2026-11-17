@@ -63,6 +63,8 @@
  "defaults": {
   "mode": "paper",
   "hillshade": true,
-  "currents": true
+  "currents": true,
+  "waterMode": "depth",
+  "waterShade": 0.1
  }
 }

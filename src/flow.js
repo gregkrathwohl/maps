@@ -15,16 +15,16 @@ const RAMP = [[0, [207, 230, 239]], [0.25, [159, 208, 224]], [0.5, [124, 196, 17
 
 // every look-and-feel knob in one place; the tuning panel edits these live
 export const DEFAULTS = {
-  // tuned by Greg 2026-11-17: thin, sharp, fully opaque streaks read like fine linework
-  density: 1.6,     // particles per 1000 px² of screen at zoom 13.5
+  // tuned by Greg 2026-11-17: thin, sharp, opaque streaks read like fine linework
+  density: 3,       // particles per 1000 px² of screen at zoom 13.5
   zoomedOut: 0.5,   // how fast density thins as you zoom out (0 = no thinning)
-  speed: 420,       // streaks move this many times faster than the water
+  speed: 380,       // streaks move this many times faster than the water
   zoomEase: 0.85,   // past zoom 13.5, how much to damp the real-speed increase (0 = none, 1 = constant on screen)
-  compress: 0.45,   // visual speed ∝ speed^compress (lower = slow water moves more)
-  trail: 0.885,     // per-frame trail fade (higher = longer streaks)
-  opacity: 1.5,     // overall streak opacity (multiplier; capped at fully opaque)
-  width: 0.4,       // overall streak width (multiplier)
-  life: 75,         // average particle life in frames
+  compress: 0.65,   // visual speed ∝ speed^compress (lower = slow water moves more)
+  trail: 0.835,     // per-frame trail fade (higher = longer streaks)
+  opacity: 2,       // overall streak opacity (multiplier; capped at fully opaque)
+  width: 0.3,       // overall streak width (multiplier)
+  life: 200,        // average particle life in frames
 };
 
 export class FlowLayer {

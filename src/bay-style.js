@@ -22,7 +22,7 @@ export const bayPalette = {
   outside: '#ece9e1',
 };
 
-export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, coastLines, ripples, trips, waterMode = 'ripples', contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
+export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, aton, coastLines, ripples, trips, waterMode = 'ripples', waterShade = 0.1, contourTiles, mode = 'web', designZoom = 13.6, hillshade = false, handNames = [] }) {
   const paper = mode === 'paper';
   const W = (base, k = null) => {
     const v = (x) => (k ? ['*', k, x] : x);
@@ -65,6 +65,9 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     { id: 'depth', type: 'color-relief', source: 'dem',
       paint: { 'color-relief-opacity': 0.9, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
         -80, '#5f9cc4', -40, '#7fb1d3', -20, '#9cc5df', -8, '#b3d3e5', -2, '#c6dfea', -0.3, 'rgba(205,228,236,0)', 0, 'rgba(0,0,0,0)'] } },
+    // a tunable darkening of all water (the "Water tone" slider), under the texture and streaks
+    { id: 'water-shade', type: 'fill', source: 'ofm', 'source-layer': 'water',
+      paint: { 'fill-color': '#1d4f72', 'fill-opacity': waterShade } },
     { id: 'marsh', type: 'fill', source: 'osm', minzoom: minz(12), filter: ['==', ['get', 'natural'], 'wetland'],
       paint: { 'fill-pattern': 'marsh' } },
     { id: 'beach', type: 'fill', source: 'osm', minzoom: minz(12),
@@ -95,13 +98,14 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     // ---- land detail, kept quiet
     { id: 'road', type: 'line', source: 'osm', minzoom: minz(12),
       filter: hw('residential', 'unclassified', 'tertiary', 'living_street', 'service'),
-      paint: { 'line-color': c.road, 'line-width': W(0.7) } },
+      paint: { 'line-color': c.road, 'line-width': W(0.55), 'line-opacity': 0.7 } },
     { id: 'road-major', type: 'line', source: 'osm',
       filter: hw('primary', 'secondary', 'motorway', 'trunk', 'primary_link', 'secondary_link', 'motorway_link'),
       paint: { 'line-color': c.roadMajor, 'line-width': W(1.3) } },
-    { id: 'trail', type: 'line', source: 'osm', minzoom: minz(13),
-      filter: ['all', hw('path', 'footway', 'track', 'bridleway'), ['!=', ['get', 'footway'], 'sidewalk']],
-      paint: { 'line-color': c.trail, 'line-width': W(0.8) } },
+    // paths stay quiet on a water map: only real trails (not city footways), only zoomed in
+    { id: 'trail', type: 'line', source: 'osm', minzoom: minz(14),
+      filter: ['all', hw('path', 'track', 'bridleway'), ['!', ['has', 'footway']]],
+      paint: { 'line-color': c.trail, 'line-width': W(0.7), 'line-opacity': 0.7 } },
     { id: 'pier', type: 'line', source: 'osm', minzoom: minz(13),
       filter: ['match', ['coalesce', ['get', 'man_made'], ''], ['pier', 'breakwater', 'groyne'], true, false],
       paint: { 'line-color': '#8a8273', 'line-width': W(1.4) } },

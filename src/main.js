@@ -63,9 +63,9 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 });
 
 // settings: the place's defaults, then whatever you chose last time on this place (localStorage)
-const prefsKey = `trail-cartography:${place}`;
+const prefsKey = `trail-cartography:v2:${place}`; // bump vN when the defaults change
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
-const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
+const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0.1, currents: true, colour: false, ...(cfg.defaults || {}), ...loadPrefs() };
 const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
 const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty };
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
@@ -73,7 +73,7 @@ document.getElementById('hillshade').checked = state.hillshade;
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
-  ripples, trips: state.trip, waterMode: state.waterMode,
+  ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade, handNames });
 
 const [w, s, e, n] = cfg.bbox;
@@ -240,21 +240,34 @@ if (bay) {
       ['compress', 'Slow-water boost (lower = more)', 0.2, 1, 0.05], ['trail', 'Trail length', 0.8, 0.99, 0.005],
       ['life', 'Particle life', 20, 200, 5], ['opacity', 'Opacity', 0.2, 2, 0.05], ['width', 'Width', 0.15, 2.5, 0.05],
     ];
+    const HELP = {
+      density: 'how many streaks on screen', zoomedOut: 'fewer streaks as you zoom out',
+      speed: 'how fast streaks move (× real speed)', zoomEase: 'slow the speed-up as you zoom in',
+      compress: 'lower = weak currents move relatively more', trail: 'how long the fading tail is; faster water already gets longer tails',
+      life: 'how long one streak lives before it restarts somewhere else (low = more flicker, high = long journeys)',
+      opacity: 'brightness of streaks', width: 'line thickness',
+    };
     const box = $('tuner-sliders');
     const render = () => {
-      box.innerHTML = SLIDERS.map(([k, label, min, max, step]) =>
-        `<label>${label}<span id="tv-${k}">${flow.p[k]}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${flow.p[k]}"></label>`).join('');
+      box.innerHTML = `<label title="darken all the water so white streaks read better">Water tone<span id="tv-waterShade">${prefs.waterShade}</span><input type="range" data-shade min="0" max="0.45" step="0.01" value="${prefs.waterShade}"></label>` +
+        SLIDERS.map(([k, label, min, max, step]) =>
+        `<label title="${HELP[k] || ''}">${label}<span id="tv-${k}">${flow.p[k]}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${flow.p[k]}"></label>`).join('');
     };
     render();
     const persist = () => { try { localStorage.setItem(flowKey, JSON.stringify(flow.p)); } catch {} };
     box.addEventListener('input', (ev) => {
+      if ('shade' in ev.target.dataset) {
+        const v = +ev.target.value; $('tv-waterShade').textContent = v; savePrefs({ waterShade: v });
+        if (map.getLayer('water-shade')) map.setPaintProperty('water-shade', 'fill-opacity', v);
+        return;
+      }
       const k = ev.target.dataset.k; if (!k) return;
       const v = +ev.target.value; $(`tv-${k}`).textContent = v; flow.setParams({ [k]: v }); persist();
     });
     $('flow-tune').addEventListener('click', () => { $('tuner').hidden = !$('tuner').hidden; });
     $('tuner-reset').addEventListener('click', () => { flow.setParams({ ...FLOW_DEFAULTS }); persist(); render(); });
     $('tuner-copy').addEventListener('click', async () => {
-      const txt = JSON.stringify(flow.p, null, 1);
+      const txt = JSON.stringify({ ...flow.p, waterShade: prefs.waterShade }, null, 1);
       $('tuner-out').hidden = false; $('tuner-out').textContent = txt;
       try { await navigator.clipboard.writeText(txt); $('tuner-copy').textContent = 'Copied ✓'; } catch {}
     });
