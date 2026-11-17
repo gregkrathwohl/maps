@@ -76,7 +76,7 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 });
 
 // settings: the place's defaults, then whatever you chose last time on this place (localStorage)
-const prefsKey = `trail-cartography:v3:${place}`; // bump vN when the defaults change
+const prefsKey = `trail-cartography:v4:${place}`; // bump vN when the defaults change
 const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
 const PUBLIC = document.body.hasAttribute('data-public');
 // the public site has no settings UI, so it always uses the place's defaults
@@ -237,7 +237,7 @@ if (bay) {
     $('flow-toggle').hidden = false;
     // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
     // No frozen state: shown means moving.
-    const flowKey = 'trail-cartography:flow:v2'; // bump when DEFAULTS change
+    const flowKey = 'trail-cartography:flow:v3'; // bump when DEFAULTS change
     const savedFlow = (() => { try { return JSON.parse(localStorage.getItem(flowKey) || '{}'); } catch { return {}; } })();
     const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.innerHTML = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
