@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marin Headlands Trails Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="node_modules/maplibre-gl/dist/maplibre-gl.css">
+<link rel="stylesheet" href="src/app.css">
+<script type="importmap">
+{ "imports": {
+  "maplibre-gl": "./node_modules/maplibre-gl/dist/maplibre-gl.mjs",
+  "maplibre-contour": "./node_modules/maplibre-contour/dist/index.mjs"
+} }
+</script>
+</head>
+<body>
+<div id="map"></div>
+
+<aside class="title-panel">
+  <div class="org">Golden Gate National Recreation Area</div>
+  <h1 id="title">Marin Headlands</h1>
+  <div class="subtitle">Trails Guide</div>
+  <ol class="areas">
+    <li>Rodeo Beach &amp; Fort Cronkhite</li>
+    <li>Point Bonita Lighthouse</li>
+    <li>Hawk Hill</li>
+    <li>Gerbode Valley</li>
+    <li>Tennessee Valley</li>
+    <li>Slacker Hill &amp; Fort Baker</li>
+    <li>Kirby Cove</li>
+  </ol>
+</aside>
+
+<aside class="key">
+  <h2>Key to Features</h2>
+  <div class="k"><i class="sw trail"></i>Trail / fire road</div>
+  <div class="k"><i class="sw trail dashed"></i>Informal / closed trail</div>
+  <div class="k"><i class="sw road"></i>Road</div>
+  <div class="k"><i class="sw street"></i>Park road</div>
+  <div class="k"><i class="sw fill os"></i>Park land</div>
+  <div class="k"><i class="sw fill beach"></i>Beach</div>
+  <div class="k"><i class="sw fill marsh"></i>Wetland</div>
+  <div class="k"><i class="sw contour"></i>Contour, 20 ft</div>
+  <div class="k"><i class="sw p">P</i>Parking</div>
+  <div class="k"><i class="sw loc">3</i>Trail area</div>
+  <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after the ECTA Ipswich Trails Guide (CCGIS).</p>
+</aside>
+
+<div class="toolbar">
+  <div class="seg" role="group" aria-label="Zoom behavior">
+    <button data-mode="web" class="on">Web</button>
+    <button data-mode="paper">Paper</button>
+  </div>
+  <label><input type="checkbox" id="hillshade"> Hillshade</label>
+  <label><input type="checkbox" id="edit"> Edit labels</label>
+  <span id="zoom"></span>
+</div>
+
+<div class="inspector" id="inspector" hidden>
+  <input id="i-text" aria-label="Label text">
+  <select id="i-style" aria-label="Label style"></select>
+  <label>Size <input type="range" id="i-size" min="8" max="40" step="0.5"></label>
+  <label>Rotate <input type="range" id="i-rotate" min="-90" max="90" step="1"></label>
+  <label>Spacing <input type="range" id="i-spacing" min="0" max="0.6" step="0.01"></label>
+  <label>Hide below z <input type="number" id="i-minzoom" min="0" max="18" step="0.5"></label>
+  <div class="row"><button id="i-delete">Delete</button><span id="saved"></span></div>
+  <p class="hint">Drag labels to move. Alt-click the map to add one.</p>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
