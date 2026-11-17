@@ -1,0 +1,44 @@
+# Every morning: pull the newest NOAA SFBOFS current forecast for each place that has
+# currents, rebuild the static site, and publish it to the gh-pages branch.
+name: Refresh currents
+
+on:
+  schedule:
+    - cron: '30 13 * * *'   # 13:30 UTC ≈ 5:30/6:30 am Pacific; NOAA's 09z run is up by then
+  workflow_dispatch: {}
+
+permissions:
+  contents: write           # push the built site to gh-pages
+
+concurrency:
+  group: refresh-currents
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: pip install numpy netCDF4
+      - run: npm ci
+      - name: Fetch NOAA currents
+        run: |
+          for p in places/*/place.json; do
+            id=$(basename "$(dirname "$p")")
+            if python -c "import json,sys; sys.exit(0 if 'currents' in json.load(open('$p')) else 1)"; then
+              echo "== $id"; python scripts/fetch-sfbofs.py "$id"
+            fi
+          done
+      - name: Build and publish
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          ./scripts/deploy.sh

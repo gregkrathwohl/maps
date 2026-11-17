@@ -19,10 +19,23 @@ w, s, e, n = cfg.get('currents', {}).get('bbox', cfg['bbox'])  # currents may re
 BUCKET = 'https://noaa-nos-ofs-pds.s3.amazonaws.com'
 CELL = cfg.get('currents', {}).get('cell', 100)  # metres
 
-day = sys.argv[2] if len(sys.argv) > 2 else dt.datetime.utcnow().strftime('%Y/%m/%d')
-listing = urllib.request.urlopen(f'{BUCKET}/?list-type=2&prefix=sfbofs/netcdf/{day}/&max-keys=1000').read().decode()
-keys = re.findall(r'<Key>([^<]+fields\.[nf]\d{3}\.nc)</Key>', listing)
-runs = sorted({re.search(r'\.(t\d\dz)\.', k).group(1) for k in keys})
+def list_keys(day):
+    listing = urllib.request.urlopen(f'{BUCKET}/?list-type=2&prefix=sfbofs/netcdf/{day}/&max-keys=1000').read().decode()
+    return re.findall(r'<Key>([^<]+fields\.[nf]\d{3}\.nc)</Key>', listing)
+
+# newest day that has a complete run (today's first run lands a few hours after 03z)
+if len(sys.argv) > 2:
+    day = sys.argv[2]; keys = list_keys(day)
+else:
+    now = dt.datetime.now(dt.timezone.utc)
+    for back in range(3):
+        day = (now - dt.timedelta(days=back)).strftime('%Y/%m/%d'); keys = list_keys(day)
+        complete = [r for r in {re.search(r'\.(t\d\dz)\.', k).group(1) for k in keys}
+                    if sum(f'.{r}.' in k and 'fields.f' in k for k in keys) >= 48]
+        if complete: break
+# newest run with the full 48 forecast hours uploaded
+runs = sorted(r for r in {re.search(r'\.(t\d\dz)\.', k).group(1) for k in keys}
+              if sum(f'.{r}.' in k and 'fields.f' in k for k in keys) >= 48)
 run = sys.argv[3] if len(sys.argv) > 3 else runs[-1]
 keys = sorted(k for k in keys if f'.{run}.' in k and not k.endswith('n000.nc') and not k.endswith('f000.nc'))
 keys = sorted(set(keys), key=lambda k: (0 if re.search(r'fields\.n\d', k) else 1, k))  # nowcast first, then forecast
