@@ -40,3 +40,12 @@ Pipeline:
 
 Saved routes live in `places/<place>/trips.json` (stops: "aton:<name>", "osm:<name>" or [lon,lat]);
 the in-browser planner routes legs around land (A* on navgrid, ≥ N m off shore) and saves back to it.
+
+### Currents (NOAA SFBOFS)
+
+    python3 -m venv .venv && .venv/bin/pip install numpy netCDF4
+    .venv/bin/python scripts/fetch-sfbofs.py richardson-bay          # newest run today: 6 h nowcast + 48 h forecast
+
+Streams ~54 hourly model files (~57 MB each) from NOAA's open-data bucket, keeps the surface
+layer inside the bbox on a 100 m grid, deletes each file. The map animates it (src/flow.js).
+Tick "Grid" on a bay map to see the router's water grid and the cells a route search explored.

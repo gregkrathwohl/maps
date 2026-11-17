@@ -50,6 +50,8 @@
     <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
   </select>
   <select id="trip-select" hidden aria-label="Route"></select>
+  <label id="flow-toggle" hidden><input type="checkbox" id="flow-on" checked> Currents</label>
+  <label id="grid-toggle" hidden><input type="checkbox" id="grid-on"> Grid</label>
   <span id="zoom"></span>
 </div>
 
@@ -71,6 +73,13 @@
   <div id="pl-total" class="total"></div>
   <ol id="pl-legs"></ol>
   <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><button id="pl-save">Save route…</button></div>
+</div>
+
+<div class="flow-panel" id="flow-panel" hidden>
+  <button id="flow-play" aria-label="Play currents">▶</button>
+  <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Time">
+  <button id="flow-now">Now</button>
+  <span id="flow-label"></span>
 </div>
 
 <script type="module" src="src/main.js"></script>

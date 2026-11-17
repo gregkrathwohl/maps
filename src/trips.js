@@ -25,6 +25,7 @@ export function resolver(osm, aton) {
 // route a list of resolved stops → GeoJSON with legs (labelled) and stop points, plus totals
 export function buildTrip(router, stops) {
   const features = [], legs = [];
+  router?.resetVisited();
   stops.forEach((s, i) => features.push({ type: 'Feature', properties: { kind: 'stop', i, name: s.name || '' },
     geometry: { type: 'Point', coordinates: s.at } }));
   for (let i = 1; i < stops.length; i++) {

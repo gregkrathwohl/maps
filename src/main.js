@@ -7,6 +7,7 @@ import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 import { Router } from './router.js';
 import { resolver, buildTrip, summary } from './trips.js';
+import { FlowLayer, timeLabel } from './flow.js';
 
 window.maplibregl = maplibregl;
 const place = new URLSearchParams(location.search).get('place') || 'marin-headlands';
@@ -187,8 +188,41 @@ if (bay) {
     }
     refresh();
   });
-  // a full style reload (Web/Paper, water switch) drops the route data: put it back
-  map.on('style.load', () => map.getSource('trips')?.setData(state.trip));
+  // --- debug: the router's water grid as an image on the map
+  const gridOn = $('grid-on');
+  $('grid-toggle').hidden = !router;
+  const drawGrid = () => {
+    if (map.getLayer('navgrid-debug')) map.removeLayer('navgrid-debug');
+    if (map.getSource('navgrid-debug')) map.removeSource('navgrid-debug');
+    if (!gridOn.checked || !router) return;
+    map.addSource('navgrid-debug', { type: 'image', ...router.debugImage() });
+    map.addLayer({ id: 'navgrid-debug', type: 'raster', source: 'navgrid-debug',
+      paint: { 'raster-resampling': 'nearest', 'raster-opacity': 0.85, 'raster-fade-duration': 0 } }, 'trip-casing');
+  };
+  gridOn.addEventListener('change', drawGrid);
+  const redrawGridSoon = () => { if (gridOn.checked) setTimeout(drawGrid, 50); };
+  tripSel.addEventListener('change', redrawGridSoon);
+  $('pl-buf').addEventListener('input', redrawGridSoon);
+  map.on('click', redrawGridSoon);
+
+  // --- NOAA SFBOFS currents: pale moving streaks, time slider
+  const flowData = await fetch(`${base}/data/currents-sfbofs.json`).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  if (flowData) {
+    const slider = $('flow-time'), label = $('flow-label'), playBtn = $('flow-play');
+    $('flow-toggle').hidden = false; $('flow-panel').hidden = false;
+    const flow = new FlowLayer(map, flowData, { onTime: (t) => { slider.value = t; label.textContent = timeLabel(flowData, t); } });
+    slider.max = flowData.times.length - 1;
+    flow.setTime(flow.t);
+    map.once('idle', () => flow.still());
+    slider.addEventListener('input', () => flow.setTime(+slider.value));
+    $('flow-now').addEventListener('click', () => flow.setTime(flow.nowIndex()));
+    playBtn.addEventListener('click', () => { if (flow.playing) { flow.pause(); playBtn.textContent = '▶'; } else { flow.play(); playBtn.textContent = '❚❚'; } });
+    $('flow-on').addEventListener('change', (ev) => { flow.setVisible(ev.target.checked); $('flow-panel').hidden = !ev.target.checked; playBtn.textContent = '▶'; });
+    window.flow = flow;
+  }
+
+  // a full style reload (Web/Paper, water switch) drops the route data and debug grid: put them back
+  map.on('style.load', () => { map.getSource('trips')?.setData(state.trip); redrawGridSoon(); });
 }
 
 window.map = map; // for poking at in devtools

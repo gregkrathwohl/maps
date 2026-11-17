@@ -28,6 +28,26 @@ export class Router {
     this.my = 110540;
     this.w = w; this.n = n;
     this.setBuffer(buffer);
+    this.visited = new Uint8Array(this.W * this.H);
+  }
+  resetVisited() { this.visited.fill(0); }
+
+  // debug picture of the grid: land, inside the buffer, open water by distance, cells the search explored
+  debugImage() {
+    const { W, H } = this, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+    const ctx = cv.getContext('2d'), img = ctx.createImageData(W, H);
+    for (let i = 0; i < W * H; i++) {
+      const d = this.dist[i], o = i * 4;
+      let c;
+      if (d === 0) c = [120, 110, 95, 150];                       // land
+      else if (d < this.minCells) c = [230, 140, 60, 170];        // too close to shore
+      else { const k = Math.min(1, d / 60); c = [40, 90 + 60 * (1 - k), 160 + 60 * (1 - k), 70 + 90 * k]; } // open water, darker = farther
+      if (this.visited[i] && d >= this.minCells) c = [250, 220, 70, 190]; // explored by the search
+      img.data.set(c, o);
+    }
+    ctx.putImageData(img, 0, 0);
+    const [w, , , n] = this.meta.bbox, e = w + (W * this.meta.cell) / this.mx, s = n - (H * this.meta.cell) / this.my;
+    return { url: cv.toDataURL(), coordinates: [[w, n], [e, n], [e, s], [w, s]] };
   }
 
   setBuffer(m) { this.buffer = m; this.minCells = Math.ceil(m / this.meta.cell); }
@@ -97,6 +117,7 @@ export class Router {
         if (ng < g[n]) { g[n] = ng; par[n] = p; push([ng + d(n, goal), n]); }
       }
     }
+    for (let i = 0; i < done.length; i++) if (done[i]) this.visited[i] = 1; // for the debug view
     if (par[goal] === -1) return null;
     const path = [];
     for (let i = goal; ; i = par[i]) { path.push(xy(i)); if (i === start) break; }
