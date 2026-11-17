@@ -26,6 +26,17 @@ export function addImages(map, c) {
     for (const [x, y] of [[2, 2], [6, 6]]) { ctx.beginPath(); ctx.arc(x, y, 0.65, 0, Math.PI * 2); ctx.fill(); }
   }), { pixelRatio: R });
 
+  // launch: dark green disc with a little kayak and paddle
+  map.addImage('kayak', canvas(36, 36, ctx => {
+    ctx.fillStyle = '#366f53'; ctx.beginPath(); ctx.arc(18, 18, 16, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.fillStyle = '#fff';
+    ctx.save(); ctx.translate(18, 18); ctx.rotate(-0.5);
+    ctx.beginPath(); ctx.ellipse(0, 0, 11, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.rotate(1.2); ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.stroke();
+    for (const x of [-11, 11]) { ctx.beginPath(); ctx.ellipse(x, 0, 2.6, 1.4, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.restore();
+  }), { pixelRatio: R });
+
   // trailhead parking: black rounded square, white P
   map.addImage('parking', canvas(36, 36, ctx => {
     ctx.fillStyle = '#111';

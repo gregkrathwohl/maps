@@ -1,0 +1,11 @@
+{
+ "waypoints": {
+  "schoonmaker": {"name": "Schoonmaker Beach", "kind": "launch", "at": [-122.4953, 37.8648]},
+  "light6": {"seamark": "Sausalito Channel Light 6"},
+  "light4": {"seamark": "Sausalito Channel Light 4"},
+  "cone": {"seamark": "Cone Rock Light"},
+  "rs3": {"seamark": "Raccoon Strait Lighted Buoy 3"},
+  "ayala": {"name": "Ayala Cove", "kind": "landing", "at": [-122.4350, 37.8679]}
+ },
+ "legs": [["schoonmaker", "light6"], ["light6", "light4"], ["light4", "cone"], ["cone", "rs3"], ["rs3", "ayala"]]
+}

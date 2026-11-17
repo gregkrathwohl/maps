@@ -2,6 +2,7 @@ import * as maplibregl from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
 import { ipswich as c } from './palette.js';
 import { buildStyle, outsideMask } from './style.js';
+import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 
@@ -9,11 +10,28 @@ window.maplibregl = maplibregl;
 const place = new URLSearchParams(location.search).get('place') || 'marin-headlands';
 const base = `places/${place}`;
 
-const [cfg, osm, labels] = await Promise.all([
+const empty = { type: 'FeatureCollection', features: [] };
+const optional = (url) => fetch(url).then(r => (r.ok ? r.json() : empty)).catch(() => empty);
+const [cfg, osm, labels, currents, routes, aton] = await Promise.all([
   fetch(`${base}/place.json`).then(r => r.json()),
   fetch(`${base}/data/osm.geojson`).then(r => r.json()),
   fetch(`${base}/labels.json`).then(r => (r.ok ? r.json() : [])),
+  optional(`${base}/data/currents.geojson`),
+  optional(`${base}/data/routes.geojson`),
+  optional(`${base}/data/aton.geojson`),
 ]);
+const bay = cfg.style === 'bay';
+if (bay) document.querySelector('.key').innerHTML = `
+  <div class="k"><i class="sw trail dashed"></i>Paddling leg, nautical miles</div>
+  <div class="k"><i class="sw kayak"></i>Launch / landing</div>
+  <div class="k"><i class="sw wisp"></i>Main tidal current</div>
+  <div class="k"><i class="sw depth"></i>Depth, shallow → deep</div>
+  <div class="k"><i class="sw isobath"></i>Depth contour, 20 ft</div>
+  <div class="k"><i class="sw buoy red"></i><i class="sw buoy green"></i>Buoys &amp; markers</div>
+  <div class="k"><i class="sw fill beach"></i>Beach</div>
+  <div class="k"><i class="sw fill os"></i>Park land</div>
+  <p class="src">Currents follow the deep channels and reverse with the tide; strength is relative, not a forecast.
+  Data: OpenStreetMap (incl. seamarks), OpenFreeMap, AWS Terrain Tiles bathymetry. Not for navigation.</p>`;
 document.title = `${cfg.name} ${cfg.subtitle}`;
 document.getElementById('title').textContent = cfg.title || cfg.name;
 document.getElementById('subtitle').textContent = cfg.subtitle || 'Trails Guide';
@@ -43,8 +61,8 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
 const state = { mode: 'web', hillshade: false };
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
-const style = () => buildStyle({ c, osm, mask, contourTiles: contourTiles(state.mode), mode: state.mode,
-  designZoom, hillshade: state.hillshade, handNames });
+const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton,
+  contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade, handNames });
 
 const [w, s, e, n] = cfg.bbox;
 const map = new maplibregl.Map({

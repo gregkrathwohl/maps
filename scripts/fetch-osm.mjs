@@ -24,6 +24,8 @@ const q = `[out:json][timeout:120];
   node["man_made"~"lighthouse"](${bb}); way["man_made"~"lighthouse|pier|bridge"](${bb});
   way["place"](${bb}); node["place"](${bb});
   way["bridge"](${bb});
+  node["seamark:type"](${bb}); way["seamark:type"](${bb});
+  node["canoe"](${bb}); node["leisure"="slipway"](${bb}); way["leisure"~"slipway|marina"](${bb});
 );
 out body; >; out skel qt;`;
 
@@ -46,7 +48,7 @@ const gj = osmtogeojson(json);
 const out = `places/${place}/data/osm.geojson`;
 fs.mkdirSync(`places/${place}/data`, { recursive: true });
 // keep tags flat + drop untagged
-const keys = /^(highway|natural|landuse|leisure|boundary|waterway|building|military|historic|amenity|tourism|man_made|place|bridge|name)$/;
+const keys = /^(highway|natural|landuse|leisure|boundary|waterway|building|military|historic|amenity|tourism|man_made|place|bridge|name|seamark:type|canoe)$/;
 gj.features = gj.features
   .filter(f => Object.keys(f.properties).some(k => keys.test(k)))
   .map(f => ({ type: 'Feature', geometry: f.geometry, properties: { ...f.properties, _id: f.id ?? f.properties.id } }));

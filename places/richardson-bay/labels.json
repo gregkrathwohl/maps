@@ -1,0 +1,128 @@
+[
+ {
+  "text": "RICHARDSON\nBAY",
+  "style": "ocean",
+  "size": 26,
+  "at": [
+   -122.4855,
+   37.8735
+  ],
+  "rotate": -32
+ },
+ {
+  "text": "SAN FRANCISCO BAY",
+  "style": "ocean",
+  "size": 22,
+  "at": [
+   -122.4495,
+   37.8445
+  ]
+ },
+ {
+  "text": "Raccoon Strait",
+  "style": "water",
+  "size": 17,
+  "at": [
+   -122.4445,
+   37.8722
+  ],
+  "rotate": -27,
+  "spacing": 0.14
+ },
+ {
+  "text": "Belvedere\nCove",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.4575,
+   37.8682
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "special anchorage",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.4745,
+   37.8632
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "ANGEL ISLAND",
+  "style": "town",
+  "size": 17,
+  "at": [
+   -122.43,
+   37.8578
+  ],
+  "spacing": 0.2,
+  "replaces": "Mount Caroline Livermore"
+ },
+ {
+  "text": "SAUSALITO",
+  "style": "town",
+  "size": 18,
+  "at": [
+   -122.4895,
+   37.8565
+  ]
+ },
+ {
+  "text": "TIBURON",
+  "style": "town",
+  "size": 18,
+  "at": [
+   -122.4575,
+   37.8818
+  ]
+ },
+ {
+  "text": "BELVEDERE",
+  "style": "town",
+  "size": 13,
+  "at": [
+   -122.4655,
+   37.8715
+  ]
+ },
+ {
+  "text": "MILL VALLEY",
+  "style": "town",
+  "size": 15,
+  "at": [
+   -122.5135,
+   37.8905
+  ]
+ },
+ {
+  "text": "Strawberry\nPoint",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.5055,
+   37.8835
+  ]
+ },
+ {
+  "text": "Point\nStuart",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4495,
+   37.8612
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "Point\nBlunt",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.417,
+   37.8525
+  ],
+  "minzoom": 13
+ }
+]
