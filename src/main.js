@@ -52,6 +52,8 @@ document.getElementById('title').textContent = cfg.title || cfg.name;
 document.getElementById('subtitle').textContent = cfg.subtitle || 'Trails Guide';
 document.getElementById('org').textContent = cfg.org || '';
 document.getElementById('areas').innerHTML = (cfg.areas || []).map(a => `<li>${a}</li>`).join('');
+document.querySelector('.title-panel').classList.add('ready');
+document.querySelector('.key').classList.add('ready');
 
 const names = cfg.boundaries || [cfg.name];
 const boundaries = osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));

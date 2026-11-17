@@ -97,6 +97,11 @@ body.planning #map canvas { cursor: crosshair; }
   padding: 10px 14px 8px; font: 13px/1.2 var(--sans); color: #222;
 }
 .flow-title { font-weight: 600; font-size: 13px; color: #222; }
+/* the track is taller than the slider (day labels hang below it): line the other items up with the slider itself */
+.flow-panel { align-items: flex-start; }
+.flow-panel > .flow-title { line-height: 18px; }
+.flow-panel > button { margin-top: -3px; }
+.flow-panel > .flow-when { margin-top: -1px; }
 .flow-track { flex: 1; position: relative; padding-bottom: 14px; }
 .flow-panel input[type=range] { width: 100%; display: block; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; height: 18px; position: relative; z-index: 1; }
 .flow-panel input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #e3e7ea; }
@@ -108,7 +113,7 @@ body.planning #map canvas { cursor: crosshair; }
 .flow-ticks i { position: absolute; top: 5px; width: 1px; height: 8px; background: #b8c2ca; }
 .flow-ticks i.now { background: #3a6f97; width: 2px; height: 10px; top: 4px; }
 .flow-ticks span { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10.5px; color: #8a949c; white-space: nowrap; }
-.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; min-width: 118px; line-height: 1.2; }
+.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; width: 94px; line-height: 1.2; }
 .flow-when b { font-weight: 600; }
 .flow-when small { display: block; color: #8a949c; font-size: 11px; }
 .flow-panel button { font: 500 12px var(--sans); border: 1px solid #cfd6db; background: #fff; color: #222; border-radius: 7px; padding: 4px 10px; cursor: pointer; }
@@ -133,3 +138,6 @@ body.clean .ui-toggle:hover { opacity: 1; }
 
 /* the published site (body[data-public]) hides the working tools: they need the local dev server */
 body[data-public] .dev-only { display: none !important; }
+
+/* panels stay invisible until main.js has filled them for this place (no flash of another map's title/key) */
+.title-panel:not(.ready), .key:not(.ready) { visibility: hidden; }
