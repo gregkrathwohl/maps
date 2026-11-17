@@ -173,11 +173,18 @@ if (bay) {
   // clicks near a buoy, beacon or launch snap to it (and are saved by name)
   map.on('click', (ev) => {
     if (!planning() || layer.editing) return;
-    const p = ev.point, box = [[p.x - 12, p.y - 12], [p.x + 12, p.y + 12]];
-    const hit = map.queryRenderedFeatures(box, { layers: ['buoy', 'beacon', 'launch'].filter(id => map.getLayer(id)) })[0];
+    // snap to a buoy/beacon/launch only when the click is right on it; hold Alt (⌥) to never snap
+    const p = ev.point, box = [[p.x - 7, p.y - 7], [p.x + 7, p.y + 7]];
+    const hit = ev.originalEvent?.altKey ? null
+      : map.queryRenderedFeatures(box, { layers: ['buoy', 'beacon', 'launch'].filter(id => map.getLayer(id)) })[0];
     if (hit?.properties.name && hit.source === 'aton') plan.push({ at: hit.geometry.coordinates, name: hit.properties.label, ref: `aton:${hit.properties.name}` });
     else if (hit?.properties.name && hit.source === 'routes') plan.push({ at: hit.geometry.coordinates, name: hit.properties.name, ref: hit.geometry.coordinates });
-    else { const at = [+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)]; plan.push({ at, name: null, ref: at }); }
+    else {
+      // a click on land becomes the nearest open water (respecting the off-shore buffer)
+      let at = [+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)];
+      if (router) at = router.toWater(at);
+      plan.push({ at, name: null, ref: at });
+    }
     refresh();
   });
   // a full style reload (Web/Paper, water switch) drops the route data: put it back

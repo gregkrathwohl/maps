@@ -63,8 +63,8 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
     // ---- water: base, depth tint, isobaths
     { id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': c.water } },
     { id: 'depth', type: 'color-relief', source: 'dem',
-      paint: { 'color-relief-opacity': 0.6, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
-        -80, '#7fb1cf', -40, '#98c2db', -20, '#b0d2e3', -8, '#c4dfea', -2, '#d3e8ef', -0.3, 'rgba(214,234,240,0)', 0, 'rgba(0,0,0,0)'] } },
+      paint: { 'color-relief-opacity': 0.9, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+        -80, '#5f9cc4', -40, '#7fb1d3', -20, '#9cc5df', -8, '#b9d8e8', -2, '#cfe5ee', -0.3, 'rgba(214,234,240,0)', 0, 'rgba(0,0,0,0)'] } },
     { id: 'marsh', type: 'fill', source: 'osm', minzoom: minz(12), filter: ['==', ['get', 'natural'], 'wetland'],
       paint: { 'fill-pattern': 'marsh' } },
     { id: 'beach', type: 'fill', source: 'osm', minzoom: minz(12),

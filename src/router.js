@@ -54,9 +54,9 @@ export class Router {
     return null;
   }
 
-  // every cell on the straight line between two cells is open water
+  // every cell on the straight line between two (possibly fractional) cell positions is open water
   clear([x0, y0], [x1, y1]) {
-    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2);
+    const n = Math.max(1, Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2));
     for (let k = 0; k <= n; k++) {
       const x = Math.round(x0 + ((x1 - x0) * k) / n), y = Math.round(y0 + ((y1 - y0) * k) / n);
       if (!this.open(y * this.W + x)) return false;
@@ -64,32 +64,42 @@ export class Router {
     return true;
   }
 
-  astar(a, b) {
+  // Lazy Theta*: A* whose parents can be any visible cell, so paths come out
+  // any-angle instead of 8-directional. Line-of-sight is checked lazily, once per expansion.
+  thetaStar(a, b) {
     const { W, H } = this, start = a[1] * W + a[0], goal = b[1] * W + b[0];
-    const g = new Float32Array(W * H).fill(Infinity), from = new Int32Array(W * H).fill(-1), done = new Uint8Array(W * H);
-    const h = (i) => { const dx = Math.abs((i % W) - b[0]), dy = Math.abs(((i / W) | 0) - b[1]); return dx + dy + (Math.SQRT2 - 2) * Math.min(dx, dy); };
-    const heap = [[h(start), start]]; g[start] = 0;
+    const g = new Float32Array(W * H).fill(Infinity), par = new Int32Array(W * H).fill(-1), done = new Uint8Array(W * H);
+    const xy = (i) => [i % W, (i / W) | 0];
+    const d = (i, j) => { const [x1, y1] = xy(i), [x2, y2] = xy(j); return Math.hypot(x2 - x1, y2 - y1); };
+    const heap = [];
     const push = (item) => { heap.push(item); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
     const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
-    const steps = [[1, 0, 1], [-1, 0, 1], [0, 1, 1], [0, -1, 1], [1, 1, Math.SQRT2], [1, -1, Math.SQRT2], [-1, 1, Math.SQRT2], [-1, -1, Math.SQRT2]];
+    const nbrs = (i) => { const [x, y] = xy(i), out = [];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue; const X = x + dx, Y = y + dy;
+        if (X >= 0 && Y >= 0 && X < W && Y < H && this.open(Y * W + X)) out.push(Y * W + X);
+      } return out; };
+    g[start] = 0; par[start] = start; push([d(start, goal), start]);
     while (heap.length) {
-      const [, i] = pop();
-      if (done[i]) continue;
-      if (i === goal) break;
-      done[i] = 1;
-      const x = i % W, y = (i / W) | 0;
-      for (const [dx, dy, c] of steps) {
-        const X = x + dx, Y = y + dy;
-        if (X < 0 || Y < 0 || X >= W || Y >= H) continue;
-        const j = Y * W + X;
-        if (done[j] || !this.open(j)) continue;
-        const ng = g[i] + c;
-        if (ng < g[j]) { g[j] = ng; from[j] = i; push([ng + h(j), j]); }
+      const [, s] = pop();
+      if (done[s]) continue;
+      // lazy check: if the parent can't actually see s, fall back to the best expanded neighbour
+      if (par[s] !== s && !this.clear(xy(par[s]), xy(s))) {
+        let best = Infinity;
+        for (const n of nbrs(s)) if (done[n] && g[n] + d(n, s) < best) { best = g[n] + d(n, s); par[s] = n; }
+        g[s] = best;
+      }
+      if (s === goal) break;
+      done[s] = 1;
+      for (const n of nbrs(s)) {
+        if (done[n]) continue;
+        const p = par[s], ng = g[p] + d(p, n);
+        if (ng < g[n]) { g[n] = ng; par[n] = p; push([ng + d(n, goal), n]); }
       }
     }
-    if (from[goal] === -1 && goal !== start) return null;
+    if (par[goal] === -1) return null;
     const path = [];
-    for (let i = goal; i !== -1; i = from[i]) path.push([i % W, (i / W) | 0]);
+    for (let i = goal; ; i = par[i]) { path.push(xy(i)); if (i === start) break; }
     return path.reverse();
   }
 
@@ -105,13 +115,42 @@ export class Router {
     return out;
   }
 
+  // corner cutting: slide each turn toward its neighbours while the shortcut stays clear,
+  // so the route wraps a point as tightly as the buffer allows
+  tighten(path, passes = 3) {
+    for (let k = 0; k < passes; k++) {
+      const out = [path[0]];
+      for (let i = 1; i < path.length - 1; i++) {
+        const a = out[out.length - 1], v = path[i], b = path[i + 1];
+        let lo = 0, hi = 0.5;
+        for (let it = 0; it < 12; it++) {
+          const t = (lo + hi) / 2;
+          const A = [v[0] + (a[0] - v[0]) * t, v[1] + (a[1] - v[1]) * t], B = [v[0] + (b[0] - v[0]) * t, v[1] + (b[1] - v[1]) * t];
+          if (this.clear(A, B)) lo = t; else hi = t;
+        }
+        if (lo < 0.01) out.push(v);
+        else out.push([v[0] + (a[0] - v[0]) * lo, v[1] + (a[1] - v[1]) * lo], [v[0] + (b[0] - v[0]) * lo, v[1] + (b[1] - v[1]) * lo]);
+      }
+      out.push(path[path.length - 1]);
+      path = this.pull(out);
+    }
+    return path;
+  }
+
+  // nearest open water to a point (for stops clicked on land: go as close as we can)
+  toWater(ll) {
+    const c = this.toCell(ll), s = this.snap(...c);
+    if (!s || (s[0] === c[0] && s[1] === c[1])) return ll;
+    return this.toLL(...s).map(v => +v.toFixed(5));
+  }
+
   // one leg between two lng/lat points; returns lng/lat coordinates
   leg(a, b) {
     const ca = this.snap(...this.toCell(a)), cb = this.snap(...this.toCell(b));
     if (!ca || !cb) return [a, b];
-    const raw = this.clear(ca, cb) ? [ca, cb] : this.astar(ca, cb);
+    const raw = this.clear(ca, cb) ? [ca, cb] : this.thetaStar(ca, cb);
     if (!raw) return [a, b];
-    return [a, ...this.pull(raw).map(([x, y]) => this.toLL(x, y)), b];
+    return [a, ...this.tighten(this.pull(raw)).map(([x, y]) => this.toLL(x, y)), b];
   }
 }
 
