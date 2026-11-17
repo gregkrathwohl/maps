@@ -124,5 +124,33 @@
    37.8525
   ],
   "minzoom": 13
+ },
+ {
+  "text": "Yellow\nBluff",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4752,
+   37.8372
+  ]
+ },
+ {
+  "text": "Point\nDiablo",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.5005,
+   37.8215
+  ]
+ },
+ {
+  "text": "Point\nCavallo",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4705,
+   37.8318
+  ],
+  "minzoom": 13.5
  }
 ]

@@ -1,6 +1,6 @@
 // Water-first style: same family as the trail guides, but the land steps back
 // and the bay carries the map: depth tint, isobaths, waterlines along the coast,
-// wispy current lines, buoys, and paddling legs with distances.
+// buoys and beacons, and launch/landing spots.
 
 const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bold: ['Noto Sans Bold'] };
 
@@ -101,43 +101,23 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
       paint: { 'line-color': '#8a8273', 'line-width': W(1.4) } },
     { id: 'outside', type: 'fill', source: 'mask', paint: { 'fill-color': c.outside, 'fill-opacity': 0 } },
 
-    // ---- currents: thin tapered strands, stronger channels get more and bolder ones
-    { id: 'current-wisp', type: 'line', source: 'currents',
-      filter: ['!', ['has', 'centre']],
-      layout: { 'line-cap': 'round' },
-      paint: { 'line-width': W(0.9, ['-', 1.3, ['*', 0.5, ['get', 'edge']]]),
-        'line-gradient': ['interpolate', ['linear'], ['line-progress'],
-          0, 'rgba(47,111,159,0)', 0.25, 'rgba(47,111,159,0.55)', 0.75, 'rgba(47,111,159,0.55)', 1, 'rgba(47,111,159,0)'],
-        'line-opacity': ['interpolate', ['linear'], ['get', 'strength'], 1, 0.45, 3, 0.9] } },
-    { id: 'current-label', type: 'symbol', source: 'currents', minzoom: minz(12),
-      filter: ['has', 'centre'],
-      layout: { 'symbol-placement': 'line-center', 'text-font': FONT.italic, 'text-size': T(12), 'text-letter-spacing': 0.1,
-        'text-field': ['case', ['>=', ['get', 'strength'], 3], 'strong ebb ⇄ flood', 'weak tidal flow'], 'text-offset': [0, -1.4] },
-      paint: { 'text-color': c.current, 'text-halo-color': 'rgba(214,234,240,0.8)', 'text-halo-width': 1.4 } },
-
-    // ---- paddling legs: the trail red, dashed, with distances
-    { id: 'route', type: 'line', source: 'routes', filter: ['==', ['geometry-type'], 'LineString'],
-      layout: { 'line-cap': 'round' },
-      paint: { 'line-color': c.route, 'line-width': W(1.8), 'line-dasharray': [3, 2] } },
-    { id: 'route-distance', type: 'symbol', source: 'routes', filter: ['==', ['geometry-type'], 'LineString'],
-      layout: { 'symbol-placement': 'line-center', 'text-field': ['get', 'label'], 'text-font': FONT.bold,
-        'text-size': T(10.5), 'text-offset': [0, -0.9], 'text-allow-overlap': true },
-      paint: { 'text-color': c.route, 'text-halo-color': 'rgba(255,255,255,0.9)', 'text-halo-width': 1.6 } },
-
     // ---- aids to navigation (NOAA ENC): buoys as discs, beacons as small squares, chart-style labels
-    { id: 'beacon', type: 'symbol', source: 'aton', minzoom: minz(12), filter: ['!', ['get', 'buoy']],
+    // markers deep in Richardson Bay wait until you zoom in
+    { id: 'beacon', type: 'symbol', source: 'aton', minzoom: minz(12),
+      filter: ['all', ['!', ['get', 'buoy']], ['any', ['!', ['get', 'inner']], ['>=', ['zoom'], 14]]],
       layout: { 'text-field': '■', 'text-font': FONT.regular, 'text-size': ['interpolate', ['linear'], ['zoom'], 12, 7, 15, 11],
         'text-allow-overlap': true, 'text-ignore-placement': true },
       paint: { 'text-color': ['match', ['get', 'colour'], 'red', '#c8323a', 'green', '#2f8a4a', 'yellow', '#e2b52b', '#555'],
         'text-halo-color': '#1f1f1f', 'text-halo-width': 0.6 } },
-    { id: 'buoy', type: 'circle', source: 'aton', minzoom: minz(11), filter: ['get', 'buoy'],
+    { id: 'buoy', type: 'circle', source: 'aton', minzoom: minz(11),
+      filter: ['all', ['get', 'buoy'], ['any', ['!', ['get', 'inner']], ['>=', ['zoom'], 14]]],
       paint: {
         'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 2.2, 15, 4.5],
         'circle-color': ['match', ['get', 'colour'], 'red', '#c8323a', 'green', '#2f8a4a', 'yellow', '#e2b52b', 'white', '#ffffff', '#888'],
         'circle-stroke-color': '#1f1f1f', 'circle-stroke-width': 0.8 } },
-    { id: 'aton-label', type: 'symbol', source: 'aton', minzoom: minz(13.5),
-      filter: ['!=', ['get', 'short'], ''],
-      layout: { 'text-field': ['get', 'short'], 'text-font': FONT.italic, 'text-size': T(9),
+    { id: 'aton-label', type: 'symbol', source: 'aton', minzoom: minz(12.5),
+      filter: ['all', ['!=', ['get', 'label'], ''], ['any', ['!', ['get', 'inner']], ['>=', ['zoom'], 15.5]]],
+      layout: { 'text-field': ['get', 'label'], 'text-font': FONT.italic, 'text-size': T(9),
         'text-anchor': 'left', 'text-offset': [0.7, 0], 'text-max-width': 8 },
       paint: { 'text-color': ['match', ['get', 'colour'], 'red', '#a3262d', 'green', '#22693a', c.inkSoft],
         'text-halo-color': 'rgba(255,255,255,0.8)', 'text-halo-width': 1.2 } },

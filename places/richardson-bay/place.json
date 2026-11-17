@@ -2,11 +2,22 @@
  "name": "Richardson Bay",
  "title": "Richardson Bay",
  "subtitle": "Paddling Guide",
- "org": "Sausalito · Tiburon · Angel Island",
+ "org": "Sausalito \u00b7 Tiburon \u00b7 Angel Island",
  "style": "bay",
- "bbox": [-122.525, 37.832, -122.405, 37.895],
- "center": [-122.462, 37.864],
+ "bbox": [
+  -122.525,
+  37.814,
+  -122.405,
+  37.895
+ ],
+ "center": [
+  -122.462,
+  37.864
+ ],
  "zoom": 13.6,
- "boundaries": ["Angel Island State Park", "Marin Headlands"],
+ "boundaries": [
+  "Angel Island State Park",
+  "Marin Headlands"
+ ],
  "areas": []
 }

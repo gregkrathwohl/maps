@@ -20,6 +20,13 @@ const dist = ([x1, y1], [x2, y2]) => {
 const pts = {};
 for (const [id, w] of Object.entries(cfg.waypoints)) {
   let at = w.at;
+  if (w.osm) { // centroid of a named OSM feature
+    const f = osm.features.find(f => f.properties.name === w.osm);
+    if (!f) throw new Error(`no OSM feature named "${w.osm}"`);
+    const flat = (c) => (typeof c[0] === 'number' ? [c] : c.flatMap(flat));
+    const pts = flat(f.geometry.coordinates);
+    at = [0, 1].map(k => +(pts.reduce((a, p) => a + p[k], 0) / pts.length).toFixed(5));
+  }
   if (w.seamark) {
     // NOAA chart name first (aton.geojson), then OSM seamark:name
     const f = aton.find(f => f.properties.name === w.seamark)

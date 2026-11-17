@@ -22,16 +22,13 @@ const [cfg, osm, labels, currents, routes, aton] = await Promise.all([
 ]);
 const bay = cfg.style === 'bay';
 if (bay) document.querySelector('.key').innerHTML = `
-  <div class="k"><i class="sw trail dashed"></i>Paddling leg, nautical miles</div>
   <div class="k"><i class="sw kayak"></i>Launch / landing</div>
-  <div class="k"><i class="sw wisp"></i>Main tidal current</div>
   <div class="k"><i class="sw depth"></i>Depth, shallow → deep</div>
   <div class="k"><i class="sw isobath"></i>Depth contour, 20 ft</div>
   <div class="k"><i class="sw buoy red"></i><i class="sw buoy green"></i>Buoys &amp; markers</div>
   <div class="k"><i class="sw fill beach"></i>Beach</div>
   <div class="k"><i class="sw fill os"></i>Park land</div>
-  <p class="src">Currents follow the deep channels and reverse with the tide; strength is relative, not a forecast.
-  Data: OpenStreetMap (incl. seamarks), OpenFreeMap, AWS Terrain Tiles bathymetry. Not for navigation.</p>`;
+  <p class="src">Data: OpenStreetMap, NOAA ENC (buoys &amp; beacons), OpenFreeMap, AWS Terrain Tiles bathymetry. Not for navigation.</p>`;
 document.title = `${cfg.name} ${cfg.subtitle}`;
 document.getElementById('title').textContent = cfg.title || cfg.name;
 document.getElementById('subtitle').textContent = cfg.subtitle || 'Trails Guide';

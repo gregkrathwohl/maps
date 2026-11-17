@@ -31,8 +31,20 @@ const out = marks.map(f => {
   const colour = COLOURS[String(p.COLOUR || '').split(',')[0]] || (p.kind === 'light' ? 'light' : 'other');
   const num = name.match(/(?:Daybeacon|Light|Buoy)\s+([A-Z0-9]+)$/)?.[1];
   const short = num ? `${colour === 'red' ? 'R ' : colour === 'green' ? 'G ' : ''}${num}` : name.replace(/ Light$/, '');
+  // friendly label for the big channel marks: "Harding Rock HR", "Raccoon Strait G 3", "Cone Rock"
+  const where = name.replace(/\s*(Lighted |Light )?(Bell |Whistle |Gong )?(Buoy|Daybeacon|Light)(\s+[A-Z0-9]+)?$/, '')
+    .replace(/^San Francisco Bay /, '').trim();
+  const inner = /^Richardson Bay|^$/.test(name) && p.kind !== 'light';
+  // lettered marks (HR, AZ, A) read better as their letters alone: Harding Rock "HR"
+  const mark = num && /^[A-Z]+$/.test(num) ? `“${num}”` : short;
+  const label = inner ? short : where && where !== short ? (num ? `${where} ${mark}` : where) : short;
   return { type: 'Feature', geometry: f.geometry,
-    properties: { kind: p.kind, name, colour, short, buoy: p.kind.startsWith('buoy') } };
+    properties: { kind: p.kind, name, colour, short, label, inner, buoy: p.kind.startsWith('buoy') } };
 });
+// marks not (yet) on the NOAA chart, e.g. private racing buoys: places/<place>/aton-extra.json
+const extraPath = `places/${place}/aton-extra.json`;
+if (fs.existsSync(extraPath)) for (const x of JSON.parse(fs.readFileSync(extraPath, 'utf8')))
+  out.push({ type: 'Feature', geometry: { type: 'Point', coordinates: x.at },
+    properties: { kind: x.kind || 'buoy_special_purpose', name: x.name, colour: x.colour, short: x.short || '', label: x.label, inner: false, buoy: true, source: x.source } });
 fs.writeFileSync(`places/${place}/data/aton.geojson`, JSON.stringify({ type: 'FeatureCollection', features: out }));
 console.log('wrote', out.length, 'aids (daymarks and duplicate lights dropped)');
