@@ -6,7 +6,7 @@ import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 import { Router } from './router.js';
-import { resolver, buildTrip, summary } from './trips.js';
+import { resolver, buildTrip, summary, fmtDist, UNITS } from './trips.js';
 import { FlowLayer, timeLabel, DEFAULTS as FLOW_DEFAULTS } from './flow.js';
 
 window.maplibregl = maplibregl;
@@ -160,6 +160,11 @@ if (bay) {
   // --- routes card: "Create a route" → click stops, see the route and its full length
   const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
   const timeFor = (nm) => { const m = Math.round((nm / 3) * 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
+  // distance unit: nautical miles by default (the water standard); your choice is remembered, even on the public site
+  let unit = (() => { try { return localStorage.getItem('trail-cartography:unit') || 'nm'; } catch { return 'nm'; } })();
+  document.querySelectorAll('[data-unit]').forEach(b => b.addEventListener('click', () => {
+    unit = b.dataset.unit; try { localStorage.setItem('trail-cartography:unit', unit); } catch {} refresh();
+  }));
   let sel = null;              // 'plan' while creating a route
   let plan = [];
   const planning = () => sel === 'plan';
@@ -168,11 +173,13 @@ if (bay) {
     $('rt-idle').hidden = planning(); $('rt-plan').hidden = !planning();
     document.body.classList.toggle('planning', planning());
     if (!planning()) { showTrip({ geojson: empty }); return; }
-    const t = buildTrip(router, plan); showTrip(t);
+    const t = buildTrip(router, plan, unit); showTrip(t);
+    document.querySelectorAll('[data-unit]').forEach(b => b.classList.toggle('on', b.dataset.unit === unit));
     $('pl-hint').hidden = plan.length >= 2;
     $('pl-hint').textContent = plan.length ? 'Now click your next stop.' : 'Click the water to start. Each click adds a stop; legs bend around land.';
-    $('pl-total').innerHTML = t.legs.length ? `${t.total.toFixed(2)} nm<small>${(t.total * 1.15078).toFixed(1)} mi · ~${timeFor(t.total)} at 3 kn</small>` : '';
-    $('pl-legs').innerHTML = t.legs.length > 1 ? t.legs.map(l => `<li>${l.from || 'Point'} → ${l.to || 'point'} · ${l.nm.toFixed(2)} nm</li>`).join('') : '';
+    const other = unit === 'nm' ? 'mi' : 'nm';
+    $('pl-total').innerHTML = t.legs.length ? `${fmtDist(t.total, unit, 2)}<small>${fmtDist(t.total, other)} · ~${timeFor(t.total)} at 3 kn</small>` : '';
+    $('pl-legs').innerHTML = t.legs.length > 1 ? t.legs.map(l => `<li>${l.from || 'Point'} → ${l.to || 'point'} · ${fmtDist(l.nm, unit, 2)}</li>`).join('') : '';
   };
   $('rt-new').addEventListener('click', () => { sel = 'plan'; plan = []; refresh(); });
   $('pl-done').addEventListener('click', () => { sel = null; plan = []; refresh(); });

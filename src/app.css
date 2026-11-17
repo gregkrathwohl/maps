@@ -92,16 +92,13 @@ body.planning #map canvas { cursor: crosshair; }
 
 .flow-panel {
   position: absolute; z-index: 3; bottom: 28px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 14px; align-items: center; width: min(560px, calc(100% - 32px));
+  display: flex; gap: 12px; align-items: center; width: min(540px, calc(100% - 32px));
   background: rgba(255, 255, 255, 0.96); border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.10);
   padding: 10px 14px 8px; font: 13px/1.2 var(--sans); color: #222;
 }
 .flow-title { font-weight: 600; font-size: 13px; color: #222; }
 /* the track is taller than the slider (day labels hang below it): line the other items up with the slider itself */
-.flow-panel { align-items: flex-start; }
-.flow-panel > .flow-title { line-height: 18px; }
-.flow-panel > button { margin-top: -3px; }
-.flow-panel > .flow-when { margin-top: -1px; }
+.flow-panel { align-items: center; }
 .flow-track { flex: 1; position: relative; padding-bottom: 14px; }
 .flow-panel input[type=range] { width: 100%; display: block; margin: 0; -webkit-appearance: none; appearance: none; background: transparent; height: 18px; position: relative; z-index: 1; }
 .flow-panel input[type=range]::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: #e3e7ea; }
@@ -113,7 +110,7 @@ body.planning #map canvas { cursor: crosshair; }
 .flow-ticks i { position: absolute; top: 5px; width: 1px; height: 8px; background: #b8c2ca; }
 .flow-ticks i.now { background: #3a6f97; width: 2px; height: 10px; top: 4px; }
 .flow-ticks span { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10.5px; color: #8a949c; white-space: nowrap; }
-.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; width: 94px; line-height: 1.2; }
+.flow-when { white-space: nowrap; font-variant-numeric: tabular-nums; line-height: 1.2; min-width: 84px; }
 .flow-when b { font-weight: 600; }
 .flow-when small { display: block; color: #8a949c; font-size: 11px; }
 .flow-panel button { font: 500 12px var(--sans); border: 1px solid #cfd6db; background: #fff; color: #222; border-radius: 7px; padding: 4px 10px; cursor: pointer; }
@@ -148,7 +145,7 @@ body[data-public] .dev-only { display: none !important; }
 .flow-tide { position: absolute; left: 0; right: 0; top: 0; height: 42px; cursor: pointer; touch-action: none; }
 .flow-tide svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .flow-tide .lbl { position: absolute; transform: translateX(-50%); font-size: 9.5px; color: #6f7b84; white-space: nowrap; font-variant-numeric: tabular-nums; pointer-events: none; }
-.flow-tide .lbl.h { top: -2px; } .flow-tide .lbl.l { bottom: -3px; }
+.flow-tide .lbl.h { top: -2px; } .flow-tide .lbl.l { bottom: 2px; }
 .flow-tide .cursor { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px solid #3a6f97; pointer-events: none; }
 .flow-tide .cursor i { position: absolute; left: -5.5px; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%; background: #fff; border: 1.5px solid #3a6f97; }
 .flow-tide .hover { position: absolute; top: 0; bottom: 0; pointer-events: none; }
@@ -184,3 +181,9 @@ body:not([data-public]) .routes-card { top: 64px; } /* below the dev toolbar */
 .rt-plan[hidden], .rt-idle[hidden], .rt-plan .hint[hidden] { display: none; }
 @media (max-width: 700px) { .routes-card { width: auto; left: 16px; right: 16px; top: auto; bottom: 120px; max-height: 40vh; } .routes-card:not(.collapsed) ~ .flow-panel { } }
 .rt-new[hidden], .rt-list[hidden], .rt-plan[hidden] { display: none; }
+
+.rt-top { display: flex; align-items: flex-start; gap: 8px; }
+.rt-top .rt-total { flex: 1; }
+.rt-units { display: inline-flex; border: 1px solid #cfd6db; border-radius: 7px; overflow: hidden; flex: none; }
+.rt-plan .rt-units button { border: 0; border-radius: 0; padding: 2px 8px; font-size: 11px; color: #5f6970; background: #fff; }
+.rt-plan .rt-units button.on { background: #3a6f97; color: #fff; }

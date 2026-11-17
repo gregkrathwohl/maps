@@ -23,7 +23,10 @@ export function resolver(osm, aton) {
 }
 
 // route a list of resolved stops → GeoJSON with legs (labelled) and stop points, plus totals
-export function buildTrip(router, stops) {
+export const UNITS = { nm: { per: 1, label: 'nm' }, mi: { per: 1.15078, label: 'mi' } };
+export const fmtDist = (nm, unit = 'nm', digits = 1) => `${(nm * UNITS[unit].per).toFixed(digits)} ${UNITS[unit].label}`;
+
+export function buildTrip(router, stops, unit = 'nm') {
   const features = [], legs = [];
   router?.resetVisited();
   stops.forEach((s, i) => features.push({ type: 'Feature', properties: { kind: 'stop', i, name: s.name || '' },
@@ -41,7 +44,7 @@ export function buildTrip(router, stops) {
       if (seg >= half) { const t = half / seg; mid = [0, 1].map(j => coords[k - 1][j] + (coords[k][j] - coords[k - 1][j]) * t); break; }
       half -= seg;
     }
-    features.push({ type: 'Feature', properties: { kind: 'mid', label: `${nm.toFixed(1)} nm` }, geometry: { type: 'Point', coordinates: mid } });
+    features.push({ type: 'Feature', properties: { kind: 'mid', label: fmtDist(nm, unit) }, geometry: { type: 'Point', coordinates: mid } });
   }
   const total = legs.reduce((a, l) => a + l.nm, 0);
   return { geojson: { type: 'FeatureCollection', features }, legs, total };

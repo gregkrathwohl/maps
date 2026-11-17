@@ -155,6 +155,11 @@ export function buildBayStyle({ c = bayPalette, osm, mask, currents, routes, ato
         'text-anchor': 'left', 'text-offset': [1.3, 0], 'text-max-width': 9, 'text-optional': true },
       paint: { 'text-color': '#245a40', 'text-halo-color': 'rgba(255,255,255,0.85)', 'text-halo-width': 1.4 } },
 
+    // the route's first stop gets a ring on top of everything (so a start on a launch icon still shows)
+    { id: 'trip-start', type: 'circle', source: 'trips', filter: ['all', ['==', ['get', 'kind'], 'stop'], ['==', ['get', 'i'], 0]],
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 9, 16, 13], 'circle-color': 'rgba(0,0,0,0)',
+        'circle-stroke-color': c.route, 'circle-stroke-width': 2.5 } },
+
     { id: 'peak-label', type: 'symbol', source: 'osm', minzoom: minz(13),
       filter: ['all', ['==', ['get', 'natural'], 'peak'], ['has', 'name'], notHand],
       layout: { 'text-field': ['get', 'name'], 'text-font': FONT.regular, 'text-size': T(10) },
