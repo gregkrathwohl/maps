@@ -1,7 +1,19 @@
 {
-  "name": "Marin Headlands",
-  "subtitle": "Trails Guide",
-  "bbox": [-122.575, 37.808, -122.465, 37.885],
-  "center": [-122.522, 37.840],
-  "zoom": 13.4
+ "name": "Marin Headlands",
+ "subtitle": "Trails Guide",
+ "bbox": [
+  -122.6,
+  37.808,
+  -122.465,
+  37.885
+ ],
+ "boundaries": [
+  "Marin Headlands",
+  "Muir Beach (GGNRA)"
+ ],
+ "center": [
+  -122.528,
+  37.845
+ ],
+ "zoom": 13.3
 }

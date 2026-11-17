@@ -17,8 +17,9 @@ const [cfg, osm, labels] = await Promise.all([
 document.title = `${cfg.name} ${cfg.subtitle}`;
 document.getElementById('title').textContent = cfg.name;
 
-const boundary = osm.features.find(f => f.properties.name === cfg.name && f.properties.boundary);
-const mask = boundary ? outsideMask(boundary) : { type: 'FeatureCollection', features: [] };
+const names = cfg.boundaries || [cfg.name];
+const boundaries = osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
+const mask = outsideMask(boundaries);
 const designZoom = cfg.zoom;
 
 // Contours in feet, generated in a worker from Terrarium DEM tiles.

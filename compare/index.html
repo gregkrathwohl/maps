@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Headlands Map Comparison</title>
+<style>
+  :root { --paper: #fbfaf6; --ink: #1f1f1f; --soft: #666; --red: #9b2f35; --line: #e3ddd4; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 15px/1.5 "Source Sans 3", Helvetica, Arial, sans-serif; }
+  main { max-width: 1500px; margin: 0 auto; padding: 24px 16px 60px; }
+  h1 { font-family: Georgia, serif; font-weight: 600; margin: 0 0 4px; }
+  .lede { color: var(--soft); margin: 0 0 24px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 640px), 1fr)); gap: 28px; }
+  figure { margin: 0; }
+  figure img { width: 100%; display: block; border: 1px solid var(--line); background: #fff; cursor: zoom-in; }
+  figcaption { padding: 10px 2px 0; }
+  figcaption b { color: var(--red); font-size: 17px; }
+  ul { margin: 6px 0 0; padding-left: 18px; }
+  li { margin: 2px 0; }
+  .plus::marker { content: "+  "; color: #2f7a4a; font-weight: 700; }
+  .minus::marker { content: "–  "; color: var(--red); font-weight: 700; }
+  dialog { padding: 0; border: 0; max-width: 96vw; max-height: 96vh; }
+  dialog img { max-width: 96vw; max-height: 96vh; display: block; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Marin Headlands, four ways</h1>
+  <p class="lede">The same area at roughly the same scale. Click any map to enlarge.</p>
+  <div class="grid">
+    <figure>
+      <img src="ours.jpg" alt="Our MapLibre map in the Ipswich guide style">
+      <figcaption><b>Ours</b> (OSM + MapLibre, Ipswich style)
+        <ul>
+          <li class="plus">Trails are the loudest thing on the map; every one at every zoom</li>
+          <li class="plus">Park vs. outside reads instantly; informal trails shown as lesser</li>
+          <li class="minus">No trail distances, dog/bike rules or amenities yet</li>
+          <li class="minus">Labels and parking still need a designer's pass</li>
+        </ul></figcaption>
+    </figure>
+    <figure>
+      <img src="nps.jpg" alt="Official NPS Marin Headlands map, 2025">
+      <figcaption><b>NPS official map</b> (2025 PDF)
+        <ul>
+          <li class="plus">Authoritative: segment distances, allowed uses by line style, dog rules, amenities</li>
+          <li class="plus">Beautiful shaded relief</li>
+          <li class="minus">Trails are thin black lines lost in the relief, and they're hard to follow</li>
+          <li class="minus">Use types are told apart by subtle dash patterns</li>
+        </ul></figcaption>
+    </figure>
+    <figure>
+      <img src="google.jpg" alt="Google Maps terrain view">
+      <figcaption><b>Google Maps</b> (terrain layer)
+        <ul>
+          <li class="plus">Strong terrain, great for getting to the trailhead</li>
+          <li class="minus">Trails are faint grey threads; almost none are named</li>
+          <li class="minus">No contours here, no sense of park boundary</li>
+        </ul></figcaption>
+    </figure>
+    <figure>
+      <img src="alltrails.jpg" alt="AllTrails explore map">
+      <figcaption><b>AllTrails</b> (explore map)
+        <ul>
+          <li class="plus">Contours and an OSM trail network; curated routes on top</li>
+          <li class="minus">Network is thin grey dashes; one green route dominates</li>
+          <li class="minus">The map is a backdrop for route cards and pins, not a map of the place</li>
+        </ul></figcaption>
+    </figure>
+  </div>
+  <p class="lede" style="margin-top:28px">Strava's heatmap needs a signed-in account, so it isn't captured here.</p>
+</main>
+<dialog id="big"><img alt=""></dialog>
+<script>
+  const d = document.getElementById('big');
+  document.querySelectorAll('figure img').forEach(i => i.addEventListener('click', () => { d.querySelector('img').src = i.src; d.showModal(); }));
+  d.addEventListener('click', () => d.close());
+</script>
+</body>
+</html>

@@ -174,10 +174,9 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
   };
 }
 
-// World polygon with the place's own boundary cut out of it.
-export function outsideMask(boundaryFeature) {
-  const g = boundaryFeature.geometry;
-  const parts = g.type === 'Polygon' ? [g.coordinates] : g.coordinates;
+// World polygon with the place's own boundaries cut out of it.
+export function outsideMask(boundaryFeatures) {
+  const parts = boundaryFeatures.flatMap(({ geometry: g }) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates));
   const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {},
     geometry: { type: 'Polygon', coordinates: [world, ...parts.map(p => p[0])] } }] };
