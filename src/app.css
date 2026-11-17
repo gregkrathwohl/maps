@@ -114,3 +114,6 @@ body.clean .toolbar, body.clean .flow-panel, body.clean .inspector, body.clean .
 body.clean .ui-toggle { opacity: 0.55; }
 body.clean .ui-toggle:hover { opacity: 1; }
 @media (max-width: 700px) { .ui-toggle { top: 12px; right: 16px; } .toolbar { right: 16px; top: 52px; } .title-panel { top: 120px; } body.clean .title-panel { top: 56px; } }
+
+/* the published site (body[data-public]) hides the working tools: they need the local dev server */
+body[data-public] .dev-only { display: none !important; }

@@ -49,3 +49,10 @@ the in-browser planner routes legs around land (A* on navgrid, ≥ N m off shore
 Streams ~54 hourly model files (~57 MB each) from NOAA's open-data bucket, keeps the surface
 layer inside the bbox on a 100 m grid, deletes each file. The map animates it (src/flow.js).
 Tick "Grid" on a bay map to see the router's water grid and the cells a route search explored.
+
+## Publishing (GitHub Pages)
+
+    node scripts/build.mjs      # → dist/: library at index.html, map.html in public mode (no dev tools)
+    # then push dist/ to the gh-pages branch (see scripts/deploy.sh)
+
+Live: https://gregkrathwohl.github.io/maps/

@@ -47,13 +47,13 @@
     <button data-mode="paper">Paper</button>
   </div>
   <label><input type="checkbox" id="hillshade"> Hillshade</label>
-  <label><input type="checkbox" id="edit"> Edit labels</label>
+  <label class="dev-only"><input type="checkbox" id="edit"> Edit labels</label>
   <select id="water-mode" hidden aria-label="Water texture">
     <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
   </select>
   <select id="trip-select" hidden aria-label="Route"></select>
   <label id="flow-toggle" hidden><input type="checkbox" id="flow-on" checked> Currents</label>
-  <label id="grid-toggle" hidden><input type="checkbox" id="grid-on"> Grid</label>
+  <label id="grid-toggle" class="dev-only" hidden><input type="checkbox" id="grid-on"> Grid</label>
   <span id="zoom"></span>
 </div>
 
@@ -74,7 +74,7 @@
   <label>Keep <span id="pl-buf-val">30</span> m off shore<input type="range" id="pl-buf" min="10" max="150" step="5" value="30"></label>
   <div id="pl-total" class="total"></div>
   <ol id="pl-legs"></ol>
-  <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><button id="pl-save">Save route…</button></div>
+  <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><button id="pl-save" class="dev-only">Save route…</button></div>
 </div>
 
 <div class="flow-panel" id="flow-panel" hidden>
@@ -82,10 +82,10 @@
   <button id="flow-now">Now</button>
   <span id="flow-label"></span>
   <label><input type="checkbox" id="flow-colour"> Colour by speed</label>
-  <button id="flow-tune">Tune</button>
+  <button id="flow-tune" class="dev-only">Tune</button>
 </div>
 
-<div class="inspector tuner" id="tuner" hidden>
+<div class="inspector tuner dev-only" id="tuner" hidden>
   <b>Current streaks</b>
   <div id="tuner-sliders"></div>
   <div class="row"><button id="tuner-copy">Copy settings</button><button id="tuner-reset">Reset</button></div>

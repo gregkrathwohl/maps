@@ -2,3 +2,5 @@ node_modules/
 compare/*.jpg
 places/*/data/currents-sfbofs.json
 .venv/
+dist/
+.deploy/
