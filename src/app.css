@@ -307,3 +307,5 @@ body.preset-nps .hand-label:not(.locator) { font-family: var(--sans) !important;
 
 /* Vegetation preset: legend trail = dark ink on cream */
 body.preset-veg .sw.trail::after { border-top-color: #2d221c; box-shadow: 0 0 0 1.5px #fbf6ea; }
+.ed-back { color: var(--ed-muted); text-decoration: none; }
+.ed-back:hover { color: var(--ed-ink); text-decoration: underline; }
