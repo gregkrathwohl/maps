@@ -5,3 +5,13 @@ places/*/data/currents-sfbofs.json
 dist/
 .deploy/
 places/*/data/tides.json
+places/*/data/dem.tif
+places/*/data/dem.npy
+places/*/data/relief.png
+places/*/data/relief-test.png
+places/*/data/naip/
+places/*/data/veg/
+experiments/vegetation/*.npy
+experiments/vegetation/*.png
+!experiments/vegetation/v3-closeup.png
+!experiments/vegetation/v3-closer.png

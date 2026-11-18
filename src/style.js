@@ -9,7 +9,11 @@
 
 const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bold: ['Noto Sans Bold'] };
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, handNames = [] }) {
+// vegetation opacity: full strength from z14 in, fading by `fade` (0–1) toward z12
+export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
+  ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
+
+export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -60,7 +64,19 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
         ['==', ['get', 'amenity'], 'parking']],
       paint: { 'fill-color': c.paper } },
 
-    ...(hillshade ? [{ id: 'hillshade', type: 'hillshade', source: 'dem',
+    // painterly vegetation (scripts/vegetation.py): image tiles clipped to parks, under the relief
+    ...(veg ? veg.tiles.map(t => ({ id: `veg-${t.row}-${t.col}`, type: 'raster', source: `veg-${t.row}-${t.col}`,
+      paint: { 'raster-resampling': 'linear', 'raster-fade-duration': 0, 'raster-opacity': vegOpacity(veg) } })) : []),
+
+    ...(veg ? [{ id: 'developed-veg', type: 'fill', source: 'osm', filter: ['any',
+        ['match', ['coalesce', ['get', 'landuse'], ''], ['residential', 'commercial', 'industrial', 'retail', 'military', 'construction'], true, false],
+        ['==', ['get', 'amenity'], 'parking']],
+      paint: { 'fill-color': c.outside, 'fill-opacity': c.outsideOpacity } }] : []),
+
+    // Blender relief (pre-rendered, transparent shadows + highlights) or the browser's own
+    ...(hillshade && relief ? [{ id: 'relief', type: 'raster', source: 'relief',
+      paint: { 'raster-opacity': relief.opacity ?? 0.9, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }] : []),
+    ...(hillshade && !relief ? [{ id: 'hillshade', type: 'hillshade', source: 'dem',
       paint: { 'hillshade-method': 'multidirectional', 'hillshade-exaggeration': 0.35,
         'hillshade-shadow-color': '#5d6b5a', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#8a8a7a' } }] : []),
 
@@ -117,6 +133,11 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       filter: hw('motorway', 'trunk'),
       paint: { 'line-color': c.paper, 'line-width': W(1.6) } },
 
+    // over the vegetation, a soft pale halo lifts the trails off the colour
+    ...(veg ? [{ id: 'trail-halo', type: 'line', source: 'osm', minzoom: minz(11), filter: trailFilter,
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#fbfaf6', 'line-opacity': 0.55, 'line-width': W(4.2), 'line-blur': W(1.6) } }] : []),
+
     // trails: the red is the whole point
     { id: 'trail', type: 'line', source: 'osm', minzoom: minz(11),
       filter: ['all', trailFilter, ['!', informal]],
@@ -166,6 +187,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
         'icon-allow-overlap': false, 'icon-padding': 24, 'symbol-sort-key': ['-', 0, ['to-number', ['get', 'capacity'], 0]] } },
   ];
 
+  if (!contours) for (let i = layers.length - 1; i >= 0; i--) if (layers[i].id.startsWith('contour')) layers.splice(i, 1);
   return {
     version: 8,
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -176,6 +198,9 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
         encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
       contours: { type: 'vector', tiles: [contourTiles], maxzoom: 15 },
+      ...(veg ? Object.fromEntries(veg.tiles.map(t => [`veg-${t.row}-${t.col}`,
+        { type: 'image', url: `${veg.base}/${veg.palette}-${t.row}-${t.col}.webp`, coordinates: t.coordinates }])) : {}),
+      ...(relief ? { relief: { type: 'canvas', canvas: relief.canvas, coordinates: relief.coordinates, animate: false } } : {}),
     },
     layers,
   };

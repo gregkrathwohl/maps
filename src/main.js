@@ -1,13 +1,14 @@
 import * as maplibregl from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
 import { ipswich as c } from './palette.js';
-import { buildStyle, outsideMask } from './style.js';
+import { buildStyle, outsideMask, vegOpacity } from './style.js';
 import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 import { Router } from './router.js';
 import { resolver, buildTrip, summary, fmtDist, UNITS } from './trips.js';
 import { FlowLayer, timeLabel, DEFAULTS as FLOW_DEFAULTS } from './flow.js';
+import { Relief, LOOK as RELIEF_LOOK, refresh as refreshRelief } from './relief.js';
 
 window.maplibregl = maplibregl;
 const place = new URLSearchParams(location.search).get('place') || 'marin-headlands';
@@ -82,14 +83,34 @@ const PUBLIC = document.body.hasAttribute('data-public');
 // the public site has no settings UI, so it always uses the place's defaults
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}), ...(PUBLIC ? {} : loadPrefs()) };
 const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
-const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty };
+const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+  blender: !!cfg.relief && prefs.blender !== false, veg: PUBLIC ? 'off' : (prefs.veg || 'off'), contours: PUBLIC || (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')),
+  vegOpacity: prefs.vegOpacity ?? 1, vegFade: prefs.vegFade ?? 0 };
+// painterly vegetation tiles (dev only for now): data/veg/veg.json lists each tile's corners
+const vegIndex = cfg.vegetation?.index && !PUBLIC
+  ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
+const vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
+// Blender relief: the grey render, turned into shadows + highlights in a canvas pinned to the
+// bbox corners (NW, NE, SE, SW). The look is tunable live; dev tweaks are kept in localStorage.
+const reliefKey = `trail-cartography:relief:${place}`;
+const reliefLook = { ...RELIEF_LOOK, ...(cfg.relief?.look || {}),
+  ...(PUBLIC ? {} : (() => { try { return JSON.parse(localStorage.getItem(reliefKey) || '{}'); } catch { return {}; } })()) };
+let relief = null;
+if (cfg.relief) {
+  const [rw, rs, re, rn] = cfg.relief.bbox;
+  const r = await Relief.load(`${base}/${cfg.relief.image}`, cfg.relief.flat).catch(() => null);
+  if (r) { r.paint(reliefLook); relief = { r, canvas: r.canvas, opacity: reliefLook.opacity,
+    coordinates: [[rw, rn], [re, rn], [re, rs], [rw, rs]] }; }
+}
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
 document.getElementById('hillshade').checked = state.hillshade;
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
-  contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade, handNames });
+  contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
+  relief: state.blender ? relief : null, handNames, contours: state.contours,
+  veg: vegIndex && state.veg !== 'off' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
 const [w, s, e, n] = cfg.bbox;
 const map = new maplibregl.Map({
@@ -146,6 +167,87 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
   map.setStyle(style(), { diff: false });
   layer.setMode(state.mode);
 }));
+$('blender').closest('label').hidden = !relief;
+$('veg').closest('label').hidden = !vegIndex;
+// copy the current look (toolbar + relief tuning) as JSON, ready to paste into place.json
+$('copy-settings').addEventListener('click', async () => {
+  const keys = ['mode', 'hillshade', 'blender', 'waterMode', 'waterShade', 'currents', 'contours', 'veg', 'vegOpacity', 'vegFade'];
+  const out = { defaults: Object.fromEntries(keys.filter(k => prefs[k] !== undefined).map(k => [k, prefs[k]])),
+    ...(cfg.relief ? { reliefLook: { ...reliefLook } } : {}), view: location.hash };
+  const text = JSON.stringify(out, null, 2);
+  try { await navigator.clipboard.writeText(text); $('copy-settings').textContent = 'Copied ✓'; }
+  catch { prompt('Settings', text); }
+  setTimeout(() => ($('copy-settings').textContent = 'Copy settings'), 1500);
+});
+$('contours').checked = state.contours;
+$('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); map.setStyle(style(), { diff: false }); });
+if (vegIndex) {
+  $('veg').innerHTML = ['off', ...vegIndex.palettes].map(p => `<option>${p}</option>`).join('');
+  $('veg').value = state.veg;
+  $('veg').addEventListener('change', (ev) => { state.veg = ev.target.value; state.contours = state.veg === 'off'; $('contours').checked = state.contours;
+    savePrefs({ veg: state.veg, contours: state.contours }); map.setStyle(style(), { diff: false }); });
+  // opacity + zoomed-out fade, live (no style rebuild)
+  for (const [id, key] of [['veg-opacity', 'vegOpacity'], ['veg-fade', 'vegFade']]) {
+    $(id).value = state[key];
+    $(id).addEventListener('input', (ev) => {
+      state[key] = +ev.target.value; savePrefs({ [key]: state[key] });
+      const op = vegOpacity({ opacity: state.vegOpacity, fade: state.vegFade });
+      for (const l of map.getStyle().layers) if (l.id.startsWith('veg-')) map.setPaintProperty(l.id, 'raster-opacity', op);
+    });
+  }
+}
+map.on('style.load', () => refreshRelief(map));
+map.on('load', () => refreshRelief(map));
+$('relief-tune').hidden = !relief;
+if (relief) {
+  const LOOKS = [['shadow', 'Shadow strength', 0, 1, 0.02], ['light', 'Highlight strength', 0, 1, 0.02],
+    ['gamma', 'Contrast (lower = softer slopes show more)', 0.3, 2, 0.05], ['opacity', 'Overall opacity', 0, 1, 0.02]];
+  const BAKES = [['sunAz', 'Sun direction (° from north)', 0, 360, 5], ['sunAlt', 'Sun height (°)', 5, 80, 1],
+    ['sunSoft', 'Shadow softness (sun size °)', 0, 20, 0.5], ['sky', 'Sky fill light', 0, 1.5, 0.05],
+    ['exag', 'Vertical exaggeration', 0.5, 6, 0.1], ['sunEnergy', 'Sun brightness', 0.5, 8, 0.1]];
+  const bake = { exag: 2, sunAlt: 35, sunAz: 315, sunSoft: 3, sky: 0.35, sunEnergy: 3, ...(cfg.relief.bake || {}) };
+  const slider = (group, [k, label, min, max, step], v) =>
+    `<label>${label}<span id="rv-${k}">${v}</span><input type="range" data-${group}="${k}" min="${min}" max="${max}" step="${step}" value="${v}"></label>`;
+  const renderLook = () => { $('rl-look').innerHTML = LOOKS.map(d => slider('look', d, reliefLook[d[0]])).join('') +
+    `<label class="chk">Shadow tint <input type="color" data-look="tint" value="${reliefLook.tint}"></label>`; };
+  renderLook();
+  $('rl-bake').innerHTML = BAKES.map(d => slider('bake', d, bake[d[0]])).join('');
+  let raf = 0;
+  const repaint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { relief.r.paint(reliefLook); refreshRelief(map); }); };
+  $('rl-look').addEventListener('input', (ev) => {
+    const k = ev.target.dataset.look; if (!k) return;
+    reliefLook[k] = k === 'tint' ? ev.target.value : +ev.target.value;
+    if (k !== 'tint') $(`rv-${k}`).textContent = reliefLook[k];
+    try { localStorage.setItem(reliefKey, JSON.stringify(reliefLook)); } catch {}
+    if (k === 'opacity') { relief.opacity = reliefLook.opacity; if (map.getLayer('relief')) map.setPaintProperty('relief', 'raster-opacity', reliefLook.opacity); }
+    else repaint();
+  });
+  $('rl-bake').addEventListener('input', (ev) => { const k = ev.target.dataset.bake; if (!k) return; bake[k] = +ev.target.value; $(`rv-${k}`).textContent = bake[k]; });
+  $('relief-tune').addEventListener('click', () => { $('relief-tuner').hidden = !$('relief-tuner').hidden; });
+  $('rl-reset').addEventListener('click', () => {
+    Object.assign(reliefLook, RELIEF_LOOK, cfg.relief.look || {}); try { localStorage.removeItem(reliefKey); } catch {}
+    renderLook(); relief.opacity = reliefLook.opacity; if (map.getLayer('relief')) map.setPaintProperty('relief', 'raster-opacity', reliefLook.opacity); repaint();
+  });
+  const post = (body) => fetch(`/api/relief/${place}`, { method: 'POST', body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
+  $('rl-save').addEventListener('click', async () => {
+    try { await post({ look: reliefLook }); cfg.relief.look = { ...reliefLook }; $('rl-status').textContent = 'Saved to place.json'; }
+    catch (e) { $('rl-status').textContent = e.message; }
+  });
+  $('rl-go').addEventListener('click', async () => {
+    const t0 = Date.now(), tick = setInterval(() => { $('rl-status').textContent = `Blender rendering… ${Math.round((Date.now() - t0) / 1000)} s`; }, 500);
+    $('rl-go').disabled = true;
+    try {
+      const res = await post({ bake, quick: $('rl-quick').checked });
+      cfg.relief.flat = res.flat; cfg.relief.bake = { ...bake };
+      await relief.r.reload(`${base}/${cfg.relief.image}`, res.flat);
+      relief.r.paint(reliefLook); refreshRelief(map);
+      $('rl-status').textContent = `Done in ${Math.round((Date.now() - t0) / 1000)} s`;
+    } catch (e) { $('rl-status').textContent = `Failed: ${e.message.slice(0, 120)}`; }
+    clearInterval(tick); $('rl-go').disabled = false;
+  });
+}
+$('blender').checked = state.blender;
+$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); map.setStyle(style(), { diff: false }); });
 $('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); map.setStyle(style(), { diff: false }); });
 
 // --- bay maps: water texture switch, saved routes, route planner

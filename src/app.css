@@ -187,3 +187,10 @@ body:not([data-public]) .routes-card { top: 64px; } /* below the dev toolbar */
 .rt-units { display: inline-flex; border: 1px solid #cfd6db; border-radius: 7px; overflow: hidden; flex: none; }
 .rt-plan .rt-units button { border: 0; border-radius: 0; padding: 2px 8px; font-size: 11px; color: #5f6970; background: #fff; }
 .rt-plan .rt-units button.on { background: #3a6f97; color: #fff; }
+
+.tuner label.chk { display: flex; gap: 6px; align-items: center; }
+.tuner b small { font-weight: 400; color: #888; }
+#relief-tuner { bottom: 40px; }
+.tuner label.chk input { width: auto; }
+.tuner label.chk input[type=color] { width: 44px; height: 22px; padding: 0; border: 1px solid #ccc; margin-left: auto; }
+#relief-tuner { top: 70px; bottom: auto; max-height: calc(100vh - 90px); }

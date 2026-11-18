@@ -9,6 +9,87 @@ folding map, in-app map, all georeferenced and identical. No Illustrator
 step; the design *is* the code. Places so far: Marin Headlands, Angel Island
 (trail guides) and Richardson Bay (paddling guide).
 
+## Idea list (Greg, 2026-11-17)
+
+No fixed order yet; Blender first.
+
+1. **Our own simplified current model** so the map doesn't depend on the daily NOAA pull.
+   Tides are predictable centuries ahead because they're a sum of ~37 regular cycles
+   (constituents: M2 lunar 12.42 h, S2 solar 12 h, K1/O1 daily, …) fitted at a gauge.
+   Currents work the same way. Three levels:
+   - *One pattern, flipped:* one SFBOFS flood snapshot × a signed tide signal (NOAA's
+     Golden Gate current prediction). Crude, surprisingly convincing.
+   - *Two patterns:* a real flood field and a real ebb field, each scaled by that signal.
+     Gets the asymmetry (ebb jets out the Gate, flood fans in; eddies sit in different places).
+   - *Harmonics per cell (the good one):* fit ~6 constituents (M2, S2, N2, K1, O1, M4) to
+     u and v at every grid cell from a month of archived SFBOFS output. Then compute
+     currents for any date in the browser, forever. Slack sweeps across the map (Richardson
+     Bay turns before the channel), spring/neap and the daily inequality come for free.
+     About 24 numbers per cell instead of 96: ~1 MB instead of 16 MB, so it also helps
+     mobile. Misses only weather (wind, big Delta outflow). Keep SFBOFS as an optional
+     "live" overlay.
+   It won't look different from today's map; it's about robustness, any-date scrubbing and page weight.
+2. **Keep polishing the Richardson Bay map** (see Near-term polish below).
+3. **Expand to all of San Francisco Bay and the coast.** Needs binary or tiled currents
+   and a coarser or tiled routing grid.
+4. **Mobile:** page weight (~30 MB now), touch for the tide graph and route planner, layout.
+5. **Blender shaded relief** for the Headlands and Angel Island. Working (2026-11-17): the M2
+   renders the Headlands at full res in ~2 min, so no cloud machine needed. Tunable in the dev
+   viewer ("Tune relief": live look sliders + Re-bake). Greg's verdict: nice, keep it, but at
+   gentle settings not dramatically better than a GDAL hillshade. Where it could shine:
+   - **Finer resolution:** 2–3 m DEM (the 3DEP lidar goes to 1 m).
+   - **Swiss / alpenglow look:** Imhof-style: warm, sunset-tinted highlights on the high
+     ridges, cool shadows, a hint of elevation colour. Mostly doable live in the browser
+     (tint by brightness and elevation), no re-render.
+   - **Render the map itself in Blender** (the East of Nowhere look, eastofnowhere.co:
+     old USGS/state maps with dramatic relief): use our finished map as the surface's colour
+     texture, so the map gets real shadows instead of having a shadow layer laid over it.
+     Strong exaggeration + low sun. Great for posters.
+6. **Ski-map / panorama view** (Berann-style): the trails seen from a viewpoint, e.g. from
+   SFRC looking over the ridges and valleys, like a ski-resort map, not geographically exact
+   but readable. Blender can do a first version: perspective camera, our map draped on the
+   terrain. The hand-bent "make it read better" part is the art.
+   Related: just rotating maps to an unusual orientation (e.g. "the view from home").
+7. **Painterly vegetation layer:** a schematic land-cover texture between the ECTA flats and
+   a satellite photo: brush vs grassland vs forest vs sand, with colour and texture but
+   simplified, like architectural-drawing tree squiggles. Two routes to try: (a) start from a
+   satellite image and simplify (cluster colours into a few classes, smooth, posterize);
+   (b) start from land-cover data (OSM landuse/natural, USGS/NLCD, CalVeg) and draw stamped
+   textures per class, borrowing colours from the satellite image. First step: a small
+   mock-up to check this is the look Greg means. Keep the ECTA style as the default;
+   new looks are extra layers / options.
+   **Status (2026-11-18):** working as a dev-only layer (toolbar → Vegetation: green / golden /
+   autumn). `scripts/vegetation.py` is procedural, not AI: NAIP 4-band → classes from NDVI +
+   roughness → flat class colours + a lumpy, noise-warped, NW-lit canopy (no visible circles) +
+   sparse tufts, clipped to parks, as 15 WebP tiles under the Blender relief. Autumn palette is
+   from Greg's photo (rosy-brown grass, olive scrub). Next: tune per Greg; a few distinct
+   tree shapes (eucalyptus, cypress); not published yet.
+   Greg's notes (2026-11-18): looks best around z13.5–15; zoomed out it's busy and the red
+   trails get lost (opacity slider + optional zoomed-out fade added; a generalised low-zoom
+   version is an option); autumn and green palettes are the keepers, golden isn't golden
+   enough; contours off with vegetation; Blender highlights look odd over it (shadows only);
+   some false scrub along Bobcat Trail (classification); cap zoom near 15.
+8. **parkrun course maps** in this style: small, pretty, one per course.
+9. **More ECTA-style trail maps:** other places, and doing more with the existing ones.
+10. **Our own tiles:** ECTA-style tiles for a region rather than one map at a time. Lower
+    priority: the point is trails and parks, not cities.
+11. **A real app:** saved routes (Firestore), trail locations, maybe GPS on the map.
+
+## The big vision: a trail-map builder (Greg, 2026-11-18)
+
+After a few more rounds on the Headlands map, turn the pipeline into an app:
+1. Open a map of the US, zoom to a park or trail area, click it.
+2. Generate the map automatically: OSM trails/roads/parks, DEM relief, vegetation, all with
+   the ECTA-style defaults.
+3. Edit it: layer controls (vegetation palette/opacity, hillshade, contours), and a real
+   label editor (add/remove/move/rotate/resize). Priorities: **trail names and peaks** (so
+   you can say "up Bobcat, down Miwok, up Coastal, down Fox"); area names like Gerbode
+   Valley are background.
+4. Add points of interest, then publish: a web map / app anyone can open.
+Greg does the hand-tweaking (labels etc.) himself; the job here is the editor + good defaults.
+
+Next places to try the vegetation layer on: **Bolinas Ridge** (Mt. Tam), classic golden grass.
+
 ## Where the data comes from
 
 | Layer | Source | How it gets in |

@@ -30,6 +30,22 @@ Pipeline:
   Local first (M2, 8 GB RAM: keep DEM ≲ 4000 px), later GitHub Actions.
 - One-click render: same design → PDF poster / foldable / in-app raster tiles, all georeferenced.
 
+## Blender shaded relief
+
+    .venv/bin/pip install numpy pillow tifffile
+    brew install --cask blender
+    .venv/bin/python scripts/fetch-dem.py marin-headlands 5     # USGS 3DEP lidar, Web Mercator, 5 m/px → data/dem.tif + dem.npy
+    /Applications/Blender.app/Contents/MacOS/Blender -b --python scripts/relief.py -- marin-headlands
+    .venv/bin/python scripts/relief-web.py marin-headlands      # grey render → transparent shadow/highlight PNG, adds "relief" to place.json
+
+`relief.py` builds a mesh straight from the DEM (one vertex per pixel), lights it with a soft
+NW sun plus dim sky, and renders straight down with an orthographic camera, so the image lines
+up with the bbox exactly (the DEM is fetched in Web Mercator, the map's own projection).
+Options: `--exag` (vertical exaggeration, 2), `--sun-alt`/`--sun-az`, `--sun-soft`, `--sky`,
+`--samples`, `--step 2` for a quick half-res test. On the M2 / 8 GB: ~7 min at half-res mesh.
+`relief-web.py` options: `--shadow`, `--light`, `--tint`, `--gamma`. Toggle "Blender" in the
+dev toolbar to compare with the browser's own hillshade.
+
 ## Water maps (style: "bay")
 
     node scripts/fetch-osm.mjs <place>     # OSM incl. coastline, beaches, launches
