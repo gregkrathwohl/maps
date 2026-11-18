@@ -3,7 +3,7 @@ import mlcontour from 'maplibre-contour';
 import { PALETTES, PRESETS } from './palette.js';
 import { buildStyle, outsideMask, vegOpacity, SHADE_PRESETS, shadePaint } from './style.js';
 import { buildBayStyle } from './bay-style.js';
-import { addImages } from './patterns.js';
+import { addImages, waterBumps } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
 import { Router } from './router.js';
 import { resolver, buildTrip, summary, fmtDist, UNITS } from './trips.js';
@@ -153,7 +153,7 @@ const map = new maplibregl.Map({
 });
 window.__map = map;
 map.on('styleimagemissing', () => {}); // images are added below
-map.on('style.load', () => addImages(map, c));
+map.on('style.load', () => addImages(map, c, { bumpSize: state.water.bumpSize ?? 1 }));
 map.addControl(new maplibregl.ScaleControl({ unit: 'imperial', maxWidth: 160 }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors' }));
@@ -348,7 +348,24 @@ $('w-texture').value = state.water.texture || '';
 $('w-depth').checked = !!state.water.depth;
 $('w-isobaths').checked = !!state.water.isobaths;
 const setWater = (patch) => { state.water = { ...state.water, ...patch }; savePrefs({ water: state.water }); restyle(); };
-$('w-texture').addEventListener('change', (ev) => setWater({ texture: ev.target.value }));
+$('w-texture').addEventListener('change', (ev) => { setWater({ texture: ev.target.value }); syncBumpRows(); });
+// bumpy water: strength (live opacity) and lump size (regenerates the tile in place)
+const syncBumpRows = () => {
+  document.querySelectorAll('[data-bumps]').forEach(el => (el.hidden = bay || state.water.texture !== 'bumps'));
+  $('w-strength').value = state.water.strength ?? 0.35; $('w-strength-v').textContent = (+$('w-strength').value).toFixed(2);
+  $('w-bump').value = state.water.bumpSize ?? 1; $('w-bump-v').textContent = (+$('w-bump').value).toFixed(2);
+};
+syncBumpRows();
+let bumpT = 0;
+const saveWater = (patch) => { state.water = { ...state.water, ...patch }; savePrefs({ water: state.water }); syncBumpRows(); };
+$('w-strength').addEventListener('input', (ev) => {
+  saveWater({ strength: +ev.target.value });
+  if (map.getLayer('water-texture')) map.setPaintProperty('water-texture', 'fill-opacity', state.water.strength);
+});
+$('w-bump').addEventListener('input', (ev) => {
+  saveWater({ bumpSize: +ev.target.value });
+  clearTimeout(bumpT); bumpT = setTimeout(() => { if (map.hasImage('water-bumps')) map.updateImage('water-bumps', waterBumps(state.water.bumpSize)); }, 120);
+});
 $('w-depth').addEventListener('change', (ev) => setWater({ depth: ev.target.checked }));
 $('w-isobaths').addEventListener('change', (ev) => setWater({ isobaths: ev.target.checked }));
 // terrain switches only flip layer visibility: no reload

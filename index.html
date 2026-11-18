@@ -126,6 +126,8 @@
     <section class="ed-sec" id="water-sec">
       <h3 id="water-h">Water</h3>
       <label class="field row" data-trailwater>Texture <select id="w-texture"><option value="">Plain</option><option value="waves">Waves</option><option value="bumps">Bumpy (lit)</option></select></label>
+      <label class="field" data-bumps>Texture strength<span id="w-strength-v"></span><input type="range" id="w-strength" min="0" max="1" step="0.01"></label>
+      <label class="field" data-bumps>Bump size<span id="w-bump-v"></span><input type="range" id="w-bump" min="0.4" max="3" step="0.05"></label>
       <label class="tg" data-trailwater>Depth tint <input type="checkbox" id="w-depth" role="switch"></label>
       <label class="tg" data-trailwater>Depth lines <input type="checkbox" id="w-isobaths" role="switch"></label>
       <label class="field row" id="water-row" hidden>Water <select id="water-mode" aria-label="Water texture">
