@@ -4,7 +4,6 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { pickParks } from './scripts/parks.mjs';
 
 const root = path.dirname(new URL(import.meta.url).pathname);
 const port = Number(process.env.PORT || 5190);
@@ -102,14 +101,13 @@ http.createServer((req, res) => {
         const dir = path.join(root, 'places', id);
         fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
         const cfg = { name, title: name, subtitle: 'Trails Guide', draft: true, created: new Date().toISOString().slice(0, 10),
-          bbox, center, zoom, areas: [], boundaries: [], defaults: { mode: 'web', hillshade: true } };
+          bbox, center, zoom, extent: 'bbox', areas: [], boundaries: [], defaults: { mode: 'web', hillshade: true } };
         const write = () => fs.writeFileSync(path.join(dir, 'place.json'), JSON.stringify(cfg, null, 2) + '\n');
         write();
         fs.writeFileSync(path.join(dir, 'labels.json'), '[]\n');
         try { await run('node', ['scripts/fetch-osm.mjs', id]); }
         catch (e) { fs.rmSync(dir, { recursive: true, force: true }); throw e; }
-        cfg.boundaries = pickParks(id);
-        if (cfg.boundaries[0] && cfg.boundaries[0] !== name) cfg.org = cfg.boundaries[0];
+        // the extent is the framed rectangle for now; parks / custom shapes come later (scripts/parks.mjs)
         write();
         res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id, boundaries: cfg.boundaries }));
       } catch (e) { res.writeHead(500).end(String(e?.message || e)); }

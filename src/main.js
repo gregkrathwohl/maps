@@ -58,8 +58,11 @@ document.querySelector('.key').classList.add('ready');
 
 const names = cfg.boundaries || [cfg.name];
 // a merged park outline (new maps write data/boundary.geojson), else the named OSM boundaries
-const merged = await optional(`${base}/data/boundary.geojson`);
-const boundaries = merged.features.length ? merged.features
+// extent: "bbox" (new maps) = the rectangle you framed; otherwise park outlines (merged file or OSM names)
+const merged = cfg.extent === 'bbox' ? empty : await optional(`${base}/data/boundary.geojson`);
+const rect = ([w, s, e, n]) => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [[[w, s], [e, s], [e, n], [w, n], [w, s]]] } });
+const boundaries = cfg.extent === 'bbox' ? [rect(cfg.bbox)]
+  : merged.features.length ? merged.features
   : osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
 const mask = outsideMask(boundaries);
 const designZoom = cfg.zoom;

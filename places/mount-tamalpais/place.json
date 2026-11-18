@@ -16,13 +16,11 @@
   ],
   "zoom": 11.92,
   "areas": [],
-  "boundaries": [
-    "Mount Tamalpais Watershed",
-    "Mount Tamalpais State Park"
-  ],
+  "boundaries": [],
   "defaults": {
     "mode": "web",
     "hillshade": true
   },
-  "org": ""
+  "org": "",
+  "extent": "bbox"
 }

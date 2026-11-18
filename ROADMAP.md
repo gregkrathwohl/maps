@@ -101,6 +101,17 @@ relief + vegetation, PDF export.
 (50–100+ km) needs tiled data: OSM → vector tiles (PMTiles), and our own Overpass or a
 Geofabrik extract instead of the public servers.
 
+**Extent (Greg, 2026-11-18):** keep it simple: a new map's extent is the rectangle you framed
+(`"extent": "bbox"`). Later, an extent option: a park (scripts/parks.mjs already picks + merges
+parks), an administrative boundary (town, county), or an uploaded custom shape. It only drives
+the grey outside wash.
+
+**Big areas, the plan:** still download only the OSM we need, then make our own vector tiles
+(tippecanoe / PMTiles) instead of one GeoJSON. Two kinds: heavy "editor" tiles with everything
+at every zoom, so all choices stay open while designing; and lean "published" tiles where the
+style decisions (which layers, from which zoom, simplification) are baked in. No world-wide
+tile infrastructure needed: one park at a time.
+
 Next places to try the vegetation layer on: **Bolinas Ridge** (Mt. Tam), classic golden grass.
 
 ## Where the data comes from
