@@ -10,7 +10,7 @@ const port = Number(process.env.PORT || 5190);
 const types = {
   '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css',
   '.json': 'application/json', '.geojson': 'application/json', '.png': 'image/png', '.svg': 'image/svg+xml',
-  '.map': 'application/json', '.pmtiles': 'application/octet-stream',
+  '.map': 'application/json', '.pmtiles': 'application/octet-stream', '.webp': 'image/webp',
 };
 
 const BLENDER = process.env.BLENDER || '/Applications/Blender.app/Contents/MacOS/Blender';
@@ -61,9 +61,27 @@ http.createServer((req, res) => {
           await run(path.join(root, '.venv/bin/python'), ['scripts/relief-web.py', place, '--bake', JSON.stringify(bake)]);
         }
         const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
-        if (look) { cfg.relief.look = look; fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 1) + '\n'); }
+        if (look) { cfg.relief.look = look; fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2) + '\n'); }
         res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ flat: cfg.relief.flat }));
       } catch (e) { fail(e); }
+    });
+    return;
+  }
+
+  // POST /api/settings/<place> {defaults} — the editor's autosave: merged into place.json
+  const sm = req.method === 'POST' && url.pathname.match(/^\/api\/settings\/([\w-]+)$/);
+  if (sm) {
+    let body = '';
+    req.on('data', c => (body += c));
+    req.on('end', () => {
+      try {
+        const { defaults } = JSON.parse(body || '{}');
+        const cfgFile = path.join(root, 'places', sm[1], 'place.json');
+        const cfg = JSON.parse(fs.readFileSync(cfgFile, 'utf8'));
+        if (defaults) cfg.defaults = { ...(cfg.defaults || {}), ...defaults };
+        fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2) + '\n');
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end('{}');
+      } catch (e) { res.writeHead(500).end(String(e?.message || e)); }
     });
     return;
   }

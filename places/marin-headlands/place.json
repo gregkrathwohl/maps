@@ -55,6 +55,12 @@
     "veg": "autumn",
     "vegOpacity": 0.8,
     "vegFade": 0,
-    "hillshade": true
+    "hillshade": true,
+    "mode": "web",
+    "contours": false,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false
   }
 }

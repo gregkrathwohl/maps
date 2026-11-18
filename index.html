@@ -39,41 +39,78 @@
   <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after the ECTA Ipswich Trails Guide (CCGIS).</p>
 </aside>
 
-<button id="ui-toggle" class="ui-toggle dev-only" aria-pressed="false">Hide controls</button>
-
-<div class="toolbar dev-only">
-  <div class="seg" role="group" aria-label="Zoom behavior">
-    <button data-mode="web" class="on">Web</button>
-    <button data-mode="paper">Paper</button>
+<aside class="editor dev-only" id="editor" aria-label="Map editor">
+  <header class="ed-head">
+    <div class="ed-name"><small>Editing</small><b id="ed-name"></b></div>
+    <button id="ed-collapse" class="ed-icon" title="Hide editor" aria-label="Hide editor">
+      <svg viewBox="0 0 16 16" width="16" height="16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </header>
+  <div class="ed-actions">
+    <span id="ed-status" class="ed-status">Saved</span>
+    <span id="zoom" class="ed-zoom"></span>
+    <button id="preview" class="btn primary">Preview
+      <svg viewBox="0 0 16 16" width="13" height="13"><path d="M6 3h7v7M13 3L5 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
   </div>
-  <label><input type="checkbox" id="hillshade"> Hillshade</label>
-  <label class="dev-only"><input type="checkbox" id="blender"> Blender</label>
-  <button id="relief-tune" class="dev-only" hidden>Tune relief</button>
-  <label class="dev-only"><input type="checkbox" id="contours"> Contours</label>
-  <button id="copy-settings" class="dev-only">Copy settings</button>
-  <button id="reset-settings" class="dev-only" title="Forget this browser's tweaks and show the map's defaults">Reset</button>
-  <label class="dev-only" hidden>Vegetation <select id="veg"></select>
-    <input type="range" id="veg-opacity" min="0" max="1" step="0.05" title="Vegetation opacity" style="width:70px">
-    <input type="range" id="veg-fade" min="0" max="1" step="0.05" title="Fade when zoomed out (z14 → z12)" style="width:70px"></label>
-  <label class="dev-only"><input type="checkbox" id="edit"> Edit labels</label>
-  <select id="water-mode" hidden aria-label="Water texture">
-    <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
-  </select>
-  <label id="flow-toggle" hidden><input type="checkbox" id="flow-on" checked> Currents</label>
-  <label id="grid-toggle" class="dev-only" hidden><input type="checkbox" id="grid-on"> Grid</label>
-  <span id="zoom"></span>
-</div>
 
-<div class="inspector" id="inspector" hidden>
-  <input id="i-text" aria-label="Label text">
-  <select id="i-style" aria-label="Label style"></select>
-  <label>Size <input type="range" id="i-size" min="8" max="40" step="0.5"></label>
-  <label>Rotate <input type="range" id="i-rotate" min="-90" max="90" step="1"></label>
-  <label>Spacing <input type="range" id="i-spacing" min="0" max="0.6" step="0.01"></label>
-  <label>Hide below z <input type="number" id="i-minzoom" min="0" max="18" step="0.5"></label>
-  <div class="row"><button id="i-delete">Delete</button><span id="saved"></span></div>
-  <p class="hint">Drag labels to move. Alt-click the map to add one.</p>
-</div>
+  <div class="ed-body">
+    <section class="ed-sec">
+      <h3>View</h3>
+      <div class="field row">Label sizing
+        <div class="seg" role="group" aria-label="Zoom behavior">
+          <button data-mode="web" class="on" title="Labels keep their screen size">Web</button>
+          <button data-mode="paper" title="Labels scale with the map, like print">Paper</button>
+        </div></div>
+    </section>
+
+    <section class="ed-sec">
+      <h3>Terrain</h3>
+      <label class="tg">Hillshade <input type="checkbox" id="hillshade" role="switch"></label>
+      <label class="tg">Blender relief <input type="checkbox" id="blender" role="switch"></label>
+      <label class="tg">Contours <input type="checkbox" id="contours" role="switch"></label>
+      <details class="ed-more" id="relief-tuner">
+        <summary>Relief look</summary>
+        <div id="rl-look"></div>
+        <h4>Blender bake <small>re-renders, ~40 s quick / 2 min full</small></h4>
+        <div id="rl-bake"></div>
+        <label class="tg">Quick preview (half-res) <input type="checkbox" id="rl-quick" role="switch" checked></label>
+        <div class="field row"><span id="rl-status" class="hint"></span><button id="rl-go" class="btn">Re-bake</button></div>
+      </details>
+    </section>
+
+    <section class="ed-sec" id="veg-sec" hidden>
+      <h3>Vegetation</h3>
+      <label class="field row">Palette <select id="veg"></select></label>
+      <label class="field">Opacity<span id="veg-opacity-v"></span><input type="range" id="veg-opacity" min="0" max="1" step="0.05"></label>
+      <label class="field">Fade when zoomed out<span id="veg-fade-v"></span><input type="range" id="veg-fade" min="0" max="1" step="0.05"></label>
+    </section>
+
+    <section class="ed-sec" id="water-sec">
+      <label class="field row" id="water-row" hidden>Water <select id="water-mode" aria-label="Water texture">
+        <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
+      </select></label>
+      <label class="tg" id="flow-toggle" hidden>Currents <input type="checkbox" id="flow-on" role="switch" checked></label>
+      <label class="tg" id="grid-toggle" hidden>Routing grid <input type="checkbox" id="grid-on" role="switch"></label>
+    </section>
+
+    <section class="ed-sec">
+      <h3>Labels <span class="count" id="label-count"></span></h3>
+      <label class="tg">Edit on map <input type="checkbox" id="edit" role="switch"></label>
+      <p class="hint">Drag to move. Alt-click the map to add one where you click.</p>
+      <div class="inspector" id="inspector" hidden>
+        <input id="i-text" aria-label="Label text" placeholder="Label text (\n for a line break)">
+        <label class="field row">Style <select id="i-style"></select></label>
+        <label class="field">Size<input type="range" id="i-size" min="8" max="40" step="0.5"></label>
+        <label class="field">Rotate<input type="range" id="i-rotate" min="-90" max="90" step="1"></label>
+        <label class="field">Letter spacing<input type="range" id="i-spacing" min="0" max="0.6" step="0.01"></label>
+        <label class="field row">Hide below zoom <input type="number" id="i-minzoom" min="0" max="18" step="0.5"></label>
+        <div class="field row"><span></span><button id="i-delete" class="btn danger">Delete label</button></div>
+      </div>
+      <ul class="label-list" id="label-list"></ul>
+      <button id="label-add" class="btn wide">+ Add label at map centre</button>
+    </section>
+  </div>
+</aside>
+<button id="ed-open" class="ed-open dev-only" title="Show editor">Editor</button>
 
 <section class="routes-card" id="routes" hidden>
   <div class="rt-idle" id="rt-idle">
@@ -98,16 +135,6 @@
   <button id="flow-now" title="Back to the current hour" disabled>Now</button>
   <label class="dev-only"><input type="checkbox" id="flow-colour"> Colour by speed</label>
   <button id="flow-tune" class="dev-only">Tune</button>
-</div>
-
-<div class="inspector tuner dev-only" id="relief-tuner" hidden>
-  <b>Relief look <small>(live)</small></b>
-  <div id="rl-look"></div>
-  <b>Blender bake <small>(re-render)</small></b>
-  <div id="rl-bake"></div>
-  <label class="chk"><input type="checkbox" id="rl-quick" checked> Quick preview (half-res)</label>
-  <div class="row"><button id="rl-go" class="primary">Re-bake</button><span id="rl-status" class="hint"></span></div>
-  <div class="row"><button id="rl-save">Save as map defaults</button><button id="rl-reset">Reset look</button></div>
 </div>
 
 <div class="inspector tuner dev-only" id="tuner" hidden>

@@ -15,8 +15,8 @@ export const STYLES = {
 };
 
 export class LabelLayer {
-  constructor(map, { place, labels, mode, designZoom, onSelect }) {
-    Object.assign(this, { map, place, labels, mode, designZoom, onSelect });
+  constructor(map, { place, labels, mode, designZoom, onSelect, onSave, onDirty }) {
+    Object.assign(this, { map, place, labels, mode, designZoom, onSelect, onSave, onDirty });
     this.markers = [];
     this.editing = false;
     this.render();
@@ -103,6 +103,7 @@ export class LabelLayer {
   remove(i) { this.labels.splice(i, 1); this.render(); this.select(null); this.dirty(); }
 
   dirty() {
+    this.onDirty?.();
     clearTimeout(this.t);
     this.t = setTimeout(() => this.save(), 400);
   }
@@ -110,6 +111,6 @@ export class LabelLayer {
   async save() {
     const body = JSON.stringify(this.labels, null, 1);
     const r = await fetch(`places/${this.place}/labels.json`, { method: 'PUT', body });
-    document.getElementById('saved').textContent = r.ok ? 'Saved to labels.json' : 'Save failed';
+    this.onSave?.(r.ok);
   }
 }

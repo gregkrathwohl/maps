@@ -76,25 +76,39 @@ const contourTiles = (mode) => demSource.contourProtocolUrl({
   elevationKey: 'ele', levelKey: 'level', contourLayer: 'contours', overzoom: 1,
 });
 
-// settings: the place's defaults, then whatever you chose last time on this place (localStorage)
-const prefsKey = `trail-cartography:v4:${place}`; // bump vN when the defaults change
-const loadPrefs = () => { try { return JSON.parse(localStorage.getItem(prefsKey) || '{}'); } catch { return {}; } };
+// settings live in the place's files: place.json "defaults" (+ relief.look), labels.json.
+// The editor (dev server only) autosaves there, so a refresh, the Preview tab and the published
+// site all show exactly what was saved. ?preview renders the published view.
+const PREVIEW = new URLSearchParams(location.search).has('preview');
+if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
-// the public site has no settings UI, so it always uses the place's defaults
-const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}), ...(PUBLIC ? {} : loadPrefs()) };
-const savePrefs = (patch) => { Object.assign(prefs, patch); try { localStorage.setItem(prefsKey, JSON.stringify(prefs)); } catch {} };
-const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
-  blender: !!cfg.relief && prefs.blender !== false, veg: PUBLIC ? 'off' : (prefs.veg || 'off'), contours: PUBLIC || (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')),
-  vegOpacity: prefs.vegOpacity ?? 1, vegFade: prefs.vegFade ?? 0 };
-// painterly vegetation tiles (dev only for now): data/veg/veg.json lists each tile's corners
-const vegIndex = cfg.vegetation?.index && !PUBLIC
+const EDITOR = !PUBLIC;
+const SAVED_KEYS = ['mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
+const $ = (id) => document.getElementById(id);
+const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
+const postJSON = (url, body) => fetch(url, { method: 'POST', body: JSON.stringify(body) })
+  .then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
+let saveT = 0;
+const savePrefs = (patch) => {
+  Object.assign(prefs, patch);
+  if (!EDITOR) return;
+  status('Saving…'); clearTimeout(saveT);
+  saveT = setTimeout(() => postJSON(`/api/settings/${place}`, { defaults: Object.fromEntries(SAVED_KEYS.filter(k => prefs[k] !== undefined).map(k => [k, prefs[k]])) })
+    .then(() => status('Saved')).catch(e => status(`Save failed: ${e.message}`)), 500);
+};
+// painterly vegetation tiles: data/veg/veg.json lists each tile's corners (not in the public build yet)
+const vegIndex = cfg.vegetation?.index
   ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
 const vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
+const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+  blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg || 'off',
+  // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
+  contours: (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')) || !vegIndex,
+  vegOpacity: prefs.vegOpacity ?? 1, vegFade: prefs.vegFade ?? 0 };
 // Blender relief: the grey render, turned into shadows + highlights in a canvas pinned to the
-// bbox corners (NW, NE, SE, SW). The look is tunable live; dev tweaks are kept in localStorage.
-const reliefKey = `trail-cartography:relief:${place}`;
-const reliefLook = { ...RELIEF_LOOK, ...(cfg.relief?.look || {}),
-  ...(PUBLIC ? {} : (() => { try { return JSON.parse(localStorage.getItem(reliefKey) || '{}'); } catch { return {}; } })()) };
+// bbox corners (NW, NE, SE, SW). The look is tunable live and autosaved to place.json.
+const reliefLook = { ...RELIEF_LOOK, ...(cfg.relief?.look || {}) };
 let relief = null;
 if (cfg.relief) {
   const [rw, rs, re, rn] = cfg.relief.bbox;
@@ -103,7 +117,7 @@ if (cfg.relief) {
     coordinates: [[rw, rn], [re, rn], [re, rs], [rw, rs]] }; }
 }
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
-document.getElementById('hillshade').checked = state.hillshade;
+$('hillshade').checked = state.hillshade;
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
@@ -112,11 +126,21 @@ const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c,
   relief: state.blender ? relief : null, handNames, contours: state.contours,
   veg: vegIndex && state.veg !== 'off' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
+// the editor sidebar is open by default in dev; collapsing it is a per-browser convenience
+const edKey = 'trail-cartography:editor-collapsed';
+const setCollapsed = (on) => {
+  document.body.classList.toggle('editor-open', EDITOR && !on);
+  try { localStorage.setItem(edKey, on ? '1' : ''); } catch {}
+  window.__map?.resize();
+};
+if (EDITOR) setCollapsed((() => { try { return !!localStorage.getItem(edKey); } catch { return false; } })());
+
 const [w, s, e, n] = cfg.bbox;
 const map = new maplibregl.Map({
   container: 'map', style: style(), center: cfg.center, zoom: designZoom,
   maxBounds: [[w - 0.08, s - 0.05], [e + 0.08, n + 0.05]], attributionControl: false, hash: true,
 });
+window.__map = map;
 map.on('styleimagemissing', () => {}); // images are added below
 map.on('style.load', () => addImages(map, c));
 map.addControl(new maplibregl.ScaleControl({ unit: 'imperial', maxWidth: 160 }), 'bottom-right');
@@ -125,18 +149,33 @@ map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribut
 // start the attribution collapsed to its ⓘ button (MapLibre opens it on wide screens)
 map.once('load', () => document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => { el.classList.remove('maplibregl-compact-show'); el.removeAttribute('open'); }));
 
-const zoomEl = document.getElementById('zoom');
+const zoomEl = $('zoom');
 const showZoom = () => (zoomEl.textContent = `z${map.getZoom().toFixed(1)}`);
 map.on('zoom', showZoom); showZoom();
 
-// --- labels + editor
-const insp = document.getElementById('inspector');
-const $ = (id) => document.getElementById(id);
+// --- editor chrome: name, preview, collapse
+$('ed-name').textContent = `${cfg.name} ${cfg.subtitle || ''}`.trim();
+$('preview').addEventListener('click', () => window.open(`${location.pathname}?place=${place}&preview${location.hash}`, '_blank'));
+$('ed-collapse').addEventListener('click', () => setCollapsed(true));
+$('ed-open').addEventListener('click', () => setCollapsed(false));
+const syncKey = () => { const k = document.querySelector('.key .sw.contour')?.closest('.k'); if (k) k.hidden = !state.contours; };
+const restyle = () => { syncKey(); map.setStyle(style(), { diff: false }); };
+syncKey();
+
+// --- labels
+const insp = $('inspector');
 $('i-style').innerHTML = Object.keys(STYLES).map(k => `<option>${k}</option>`).join('');
-const layer = new LabelLayer(map, {
+const renderLabelList = () => {
+  $('label-count').textContent = labels.length;
+  $('label-list').innerHTML = labels.map((l, i) =>
+    `<li data-i="${i}" class="${i === layer?.selected ? 'on' : ''}"><span>${l.text.replace(/\n/g, ' ').replace(/</g, '&lt;')}</span><small>${l.style}</small></li>`).join('');
+};
+let layer = null;
+layer = new LabelLayer(map, {
   place, labels, mode: state.mode, designZoom,
   onSelect(l) {
     insp.hidden = !l;
+    renderLabelList();
     if (!l) return;
     $('i-text').value = l.text.replace(/\n/g, '\\n');
     $('i-style').value = l.style;
@@ -144,58 +183,59 @@ const layer = new LabelLayer(map, {
     $('i-rotate').value = l.rotate || 0;
     $('i-spacing').value = l.spacing ?? STYLES[l.style]?.spacing ?? 0;
     $('i-minzoom').value = l.minzoom ?? '';
+    $('label-list').querySelector('li.on')?.scrollIntoView({ block: 'nearest' });
   },
+  onDirty() { status('Saving…'); },
+  onSave(ok) { status(ok ? 'Saved' : 'Save failed'); renderLabelList(); },
 });
-const edit = (key, conv = (v) => v) => (ev) => layer.selected != null && layer.update(layer.selected, { [key]: conv(ev.target.value) });
+renderLabelList();
+const setEditing = (on) => { $('edit').checked = on; layer.setEditing(on); };
+const edit = (key, conv = (v) => v) => (ev) => { if (layer.selected == null) return; status('Saving…'); layer.update(layer.selected, { [key]: conv(ev.target.value) }); };
 $('i-text').addEventListener('input', edit('text', v => v.replace(/\\n/g, '\n')));
 $('i-style').addEventListener('change', edit('style'));
 $('i-size').addEventListener('input', edit('size', Number));
 $('i-rotate').addEventListener('input', edit('rotate', Number));
 $('i-spacing').addEventListener('input', edit('spacing', Number));
 $('i-minzoom').addEventListener('change', edit('minzoom', v => (v === '' ? undefined : Number(v))));
-$('i-delete').addEventListener('click', () => layer.selected != null && layer.remove(layer.selected));
-$('edit').addEventListener('change', (ev) => { layer.setEditing(ev.target.checked); insp.hidden = true; });
+$('i-delete').addEventListener('click', () => { if (layer.selected != null) { status('Saving…'); layer.remove(layer.selected); } });
+$('edit').addEventListener('change', (ev) => setEditing(ev.target.checked));
+$('label-add').addEventListener('click', () => {
+  setEditing(true); status('Saving…');
+  const p = map.getCenter(); layer.add([+p.lng.toFixed(5), +p.lat.toFixed(5)]);
+});
+$('label-list').addEventListener('click', (ev) => {
+  const li = ev.target.closest('li'); if (!li) return;
+  setEditing(true); const i = +li.dataset.i; layer.select(i);
+  const at = labels[i].at, b = map.getBounds();
+  if (!b.contains(at)) map.easeTo({ center: at });
+});
 map.on('click', (ev) => {
-  if (layer.editing && ev.originalEvent.altKey) layer.add([+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)]);
+  if (layer.editing && ev.originalEvent.altKey) { status('Saving…'); layer.add([+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)]); }
   else if (layer.editing) layer.select(null);
 });
 
-// --- toolbar
+// --- view + terrain
 document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click', () => {
   state.mode = b.dataset.mode; savePrefs({ mode: state.mode });
   document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
-  map.setStyle(style(), { diff: false });
+  restyle();
   layer.setMode(state.mode);
 }));
 $('blender').closest('label').hidden = !relief;
-$('veg').closest('label').hidden = !vegIndex;
-// forget this browser's tweaks for this place and show the map's saved defaults
-$('reset-settings').addEventListener('click', () => {
-  try { localStorage.removeItem(prefsKey); localStorage.removeItem(reliefKey); } catch {}
-  location.reload();
-});
-// copy the current look (toolbar + relief tuning) as JSON, ready to paste into place.json
-$('copy-settings').addEventListener('click', async () => {
-  const keys = ['mode', 'hillshade', 'blender', 'waterMode', 'waterShade', 'currents', 'contours', 'veg', 'vegOpacity', 'vegFade'];
-  const out = { defaults: Object.fromEntries(keys.filter(k => prefs[k] !== undefined).map(k => [k, prefs[k]])),
-    ...(cfg.relief ? { reliefLook: { ...reliefLook } } : {}), view: location.hash };
-  const text = JSON.stringify(out, null, 2);
-  try { await navigator.clipboard.writeText(text); $('copy-settings').textContent = 'Copied ✓'; }
-  catch { prompt('Settings', text); }
-  setTimeout(() => ($('copy-settings').textContent = 'Copy settings'), 1500);
-});
+$('veg-sec').hidden = !vegIndex;
 $('contours').checked = state.contours;
-$('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); map.setStyle(style(), { diff: false }); });
+$('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); restyle(); });
+const showVal = (id, v) => { const el = $(`${id}-v`); if (el) el.textContent = (+v).toFixed(2); };
 if (vegIndex) {
-  $('veg').innerHTML = ['off', ...vegIndex.palettes].map(p => `<option>${p}</option>`).join('');
+  $('veg').innerHTML = ['off', ...vegIndex.palettes].map(p => `<option value="${p}">${p[0].toUpperCase() + p.slice(1)}</option>`).join('');
   $('veg').value = state.veg;
   $('veg').addEventListener('change', (ev) => { state.veg = ev.target.value; state.contours = state.veg === 'off'; $('contours').checked = state.contours;
-    savePrefs({ veg: state.veg, contours: state.contours }); map.setStyle(style(), { diff: false }); });
+    savePrefs({ veg: state.veg, contours: state.contours }); restyle(); });
   // opacity + zoomed-out fade, live (no style rebuild)
   for (const [id, key] of [['veg-opacity', 'vegOpacity'], ['veg-fade', 'vegFade']]) {
-    $(id).value = state[key];
+    $(id).value = state[key]; showVal(id, state[key]);
     $(id).addEventListener('input', (ev) => {
-      state[key] = +ev.target.value; savePrefs({ [key]: state[key] });
+      state[key] = +ev.target.value; showVal(id, state[key]); savePrefs({ [key]: state[key] });
       const op = vegOpacity({ opacity: state.vegOpacity, fade: state.vegFade });
       for (const l of map.getStyle().layers) if (l.id.startsWith('veg-')) map.setPaintProperty(l.id, 'raster-opacity', op);
     });
@@ -203,46 +243,36 @@ if (vegIndex) {
 }
 map.on('style.load', () => refreshRelief(map));
 map.on('load', () => refreshRelief(map));
-$('relief-tune').hidden = !relief;
+$('relief-tuner').hidden = !relief;
 if (relief) {
   const LOOKS = [['shadow', 'Shadow strength', 0, 1, 0.02], ['light', 'Highlight strength', 0, 1, 0.02],
-    ['gamma', 'Contrast (lower = softer slopes show more)', 0.3, 2, 0.05], ['opacity', 'Overall opacity', 0, 1, 0.02]];
-  const BAKES = [['sunAz', 'Sun direction (° from north)', 0, 360, 5], ['sunAlt', 'Sun height (°)', 5, 80, 1],
-    ['sunSoft', 'Shadow softness (sun size °)', 0, 20, 0.5], ['sky', 'Sky fill light', 0, 1.5, 0.05],
+    ['gamma', 'Contrast', 0.3, 2, 0.05], ['opacity', 'Opacity', 0, 1, 0.02]];
+  const BAKES = [['sunAz', 'Sun direction (°)', 0, 360, 5], ['sunAlt', 'Sun height (°)', 5, 80, 1],
+    ['sunSoft', 'Shadow softness', 0, 20, 0.5], ['sky', 'Sky fill light', 0, 1.5, 0.05],
     ['exag', 'Vertical exaggeration', 0.5, 6, 0.1], ['sunEnergy', 'Sun brightness', 0.5, 8, 0.1]];
   const bake = { exag: 2, sunAlt: 35, sunAz: 315, sunSoft: 3, sky: 0.35, sunEnergy: 3, ...(cfg.relief.bake || {}) };
   const slider = (group, [k, label, min, max, step], v) =>
-    `<label>${label}<span id="rv-${k}">${v}</span><input type="range" data-${group}="${k}" min="${min}" max="${max}" step="${step}" value="${v}"></label>`;
-  const renderLook = () => { $('rl-look').innerHTML = LOOKS.map(d => slider('look', d, reliefLook[d[0]])).join('') +
-    `<label class="chk">Shadow tint <input type="color" data-look="tint" value="${reliefLook.tint}"></label>`; };
-  renderLook();
+    `<label class="field">${label}<span id="rv-${k}">${v}</span><input type="range" data-${group}="${k}" min="${min}" max="${max}" step="${step}" value="${v}"></label>`;
+  $('rl-look').innerHTML = LOOKS.map(d => slider('look', d, reliefLook[d[0]])).join('') +
+    `<label class="field row">Shadow tint <input type="color" data-look="tint" value="${reliefLook.tint}"></label>`;
   $('rl-bake').innerHTML = BAKES.map(d => slider('bake', d, bake[d[0]])).join('');
-  let raf = 0;
+  let raf = 0, lookT = 0;
   const repaint = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { relief.r.paint(reliefLook); refreshRelief(map); }); };
   $('rl-look').addEventListener('input', (ev) => {
     const k = ev.target.dataset.look; if (!k) return;
     reliefLook[k] = k === 'tint' ? ev.target.value : +ev.target.value;
     if (k !== 'tint') $(`rv-${k}`).textContent = reliefLook[k];
-    try { localStorage.setItem(reliefKey, JSON.stringify(reliefLook)); } catch {}
     if (k === 'opacity') { relief.opacity = reliefLook.opacity; if (map.getLayer('relief')) map.setPaintProperty('relief', 'raster-opacity', reliefLook.opacity); }
     else repaint();
+    status('Saving…'); clearTimeout(lookT);
+    lookT = setTimeout(() => postJSON(`/api/relief/${place}`, { look: reliefLook }).then(() => status('Saved')).catch(e => status(`Save failed: ${e.message}`)), 500);
   });
   $('rl-bake').addEventListener('input', (ev) => { const k = ev.target.dataset.bake; if (!k) return; bake[k] = +ev.target.value; $(`rv-${k}`).textContent = bake[k]; });
-  $('relief-tune').addEventListener('click', () => { $('relief-tuner').hidden = !$('relief-tuner').hidden; });
-  $('rl-reset').addEventListener('click', () => {
-    Object.assign(reliefLook, RELIEF_LOOK, cfg.relief.look || {}); try { localStorage.removeItem(reliefKey); } catch {}
-    renderLook(); relief.opacity = reliefLook.opacity; if (map.getLayer('relief')) map.setPaintProperty('relief', 'raster-opacity', reliefLook.opacity); repaint();
-  });
-  const post = (body) => fetch(`/api/relief/${place}`, { method: 'POST', body: JSON.stringify(body) }).then(async r => { if (!r.ok) throw new Error(await r.text()); return r.json(); });
-  $('rl-save').addEventListener('click', async () => {
-    try { await post({ look: reliefLook }); cfg.relief.look = { ...reliefLook }; $('rl-status').textContent = 'Saved to place.json'; }
-    catch (e) { $('rl-status').textContent = e.message; }
-  });
   $('rl-go').addEventListener('click', async () => {
-    const t0 = Date.now(), tick = setInterval(() => { $('rl-status').textContent = `Blender rendering… ${Math.round((Date.now() - t0) / 1000)} s`; }, 500);
+    const t0 = Date.now(), tick = setInterval(() => { $('rl-status').textContent = `Rendering… ${Math.round((Date.now() - t0) / 1000)} s`; }, 500);
     $('rl-go').disabled = true;
     try {
-      const res = await post({ bake, quick: $('rl-quick').checked });
+      const res = await postJSON(`/api/relief/${place}`, { bake, quick: $('rl-quick').checked });
       cfg.relief.flat = res.flat; cfg.relief.bake = { ...bake };
       await relief.r.reload(`${base}/${cfg.relief.image}`, res.flat);
       relief.r.paint(reliefLook); refreshRelief(map);
@@ -252,15 +282,15 @@ if (relief) {
   });
 }
 $('blender').checked = state.blender;
-$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); map.setStyle(style(), { diff: false }); });
-$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); map.setStyle(style(), { diff: false }); });
+$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); restyle(); });
+$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); restyle(); });
 
 // --- bay maps: water texture switch, saved routes, route planner
 if (bay) {
   const router = await Router.load(base);
   const resolve = resolver(osm, aton);
   const waterSel = $('water-mode'), card = $('routes');
-  waterSel.hidden = false;
+  $('water-row').hidden = false;
   waterSel.value = state.waterMode;
   waterSel.addEventListener('change', () => { state.waterMode = waterSel.value; savePrefs({ waterMode: state.waterMode }); map.setStyle(style(), { diff: false }); });
 
@@ -473,10 +503,6 @@ if (bay) {
   map.on('style.load', () => { map.getSource('trips')?.setData(state.trip); redrawGridSoon(); });
 }
 
-// --- show/hide all the working controls, to see the map clean
-const uiBtn = document.getElementById('ui-toggle');
-const setClean = (on) => { document.body.classList.toggle('clean', on); uiBtn.textContent = on ? 'Show controls' : 'Hide controls'; uiBtn.setAttribute('aria-pressed', on); };
-uiBtn.addEventListener('click', () => { const on = !document.body.classList.contains('clean'); setClean(on); savePrefs({ clean: on }); });
-setClean(!!prefs.clean);
+
 
 window.map = map; // for poking at in devtools
