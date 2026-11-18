@@ -42,6 +42,8 @@
 <aside class="editor dev-only" id="editor" aria-label="Map editor">
   <header class="ed-head">
     <div class="ed-name"><small>Editing</small><b id="ed-name"></b></div>
+    <button id="ed-float" class="ed-icon" title="Float over the map / dock beside it" aria-label="Toggle floating sidebar">
+      <svg viewBox="0 0 16 16" width="16" height="16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v10" stroke="currentColor" stroke-width="1.4"/></svg></button>
     <button id="ed-collapse" class="ed-icon" title="Hide editor" aria-label="Hide editor">
       <svg viewBox="0 0 16 16" width="16" height="16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   </header>
@@ -93,9 +95,9 @@
     </section>
 
     <section class="ed-sec">
-      <h3>Labels <span class="count" id="label-count"></span></h3>
-      <label class="tg">Edit on map <input type="checkbox" id="edit" role="switch"></label>
-      <p class="hint">Drag to move. Alt-click the map to add one where you click.</p>
+      <h3>Labels <span class="count" id="label-count" title="Hand-placed labels"></span></h3>
+      <label class="tg">Edit labels on the map <input type="checkbox" id="edit" role="switch"></label>
+      <p class="hint">While on: click any name on the map (a peak, trail, road) to take it over, then drag, resize or rotate it. Alt-click empty map to add a new label.</p>
       <div class="inspector" id="inspector" hidden>
         <input id="i-text" aria-label="Label text" placeholder="Label text (\n for a line break)">
         <label class="field row">Style <select id="i-style"></select></label>

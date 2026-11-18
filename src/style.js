@@ -13,7 +13,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, handNames = [] }) {
+export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -74,11 +74,14 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       paint: { 'fill-color': c.outside, 'fill-opacity': c.outsideOpacity } }] : []),
 
     // Blender relief (pre-rendered, transparent shadows + highlights) or the browser's own
-    ...(hillshade && relief ? [{ id: 'relief', type: 'raster', source: 'relief',
+    // both are always in the style; the toggles only flip their visibility (no reload)
+    ...(relief ? [{ id: 'relief', type: 'raster', source: 'relief',
+      layout: { visibility: hillshade && blender ? 'visible' : 'none' },
       paint: { 'raster-opacity': relief.opacity ?? 0.9, 'raster-resampling': 'linear', 'raster-fade-duration': 0 } }] : []),
-    ...(hillshade && !relief ? [{ id: 'hillshade', type: 'hillshade', source: 'dem',
+    ...[{ id: 'hillshade', type: 'hillshade', source: 'dem',
+      layout: { visibility: hillshade && !(relief && blender) ? 'visible' : 'none' },
       paint: { 'hillshade-method': 'multidirectional', 'hillshade-exaggeration': 0.35,
-        'hillshade-shadow-color': '#5d6b5a', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#8a8a7a' } }] : []),
+        'hillshade-shadow-color': '#5d6b5a', 'hillshade-highlight-color': '#ffffff', 'hillshade-accent-color': '#8a8a7a' } }],
 
     { id: 'wetland', type: 'fill', source: 'osm', minzoom: minz(12),
       filter: ['==', ['get', 'natural'], 'wetland'],
@@ -163,12 +166,12 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       paint: { 'line-color': c.waterLine, 'line-width': W(0.7) } },
     // OSM-driven labels (hand-placed labels live in HTML on top)
     { id: 'trail-label', type: 'symbol', source: 'osm', minzoom: minz(14),
-      filter: ['all', trailFilter, ['has', 'name']],
+      filter: ['all', trailFilter, ['has', 'name'], notHand],
       layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT.italic,
         'text-size': T(10), 'symbol-spacing': 350, 'text-offset': [0, -0.75] },
       paint: { 'text-color': '#7f2a31', 'text-halo-color': 'rgba(251,250,246,0.75)', 'text-halo-width': 1.2 } },
     { id: 'road-label', type: 'symbol', source: 'osm', minzoom: minz(13),
-      filter: ['all', hw('primary', 'secondary', 'tertiary', 'residential', 'unclassified'), ['has', 'name'], ['!', carFree]],
+      filter: ['all', hw('primary', 'secondary', 'tertiary', 'residential', 'unclassified'), ['has', 'name'], ['!', carFree], notHand],
       layout: { 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': FONT.regular,
         'text-size': T(10.5), 'symbol-spacing': 500, 'text-offset': [0, -0.8] },
       paint: { 'text-color': c.ink, 'text-halo-color': 'rgba(251,250,246,0.6)', 'text-halo-width': 1 } },
@@ -187,7 +190,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
         'icon-allow-overlap': false, 'icon-padding': 24, 'symbol-sort-key': ['-', 0, ['to-number', ['get', 'capacity'], 0]] } },
   ];
 
-  if (!contours) for (let i = layers.length - 1; i >= 0; i--) if (layers[i].id.startsWith('contour')) layers.splice(i, 1);
+  for (const l of layers) if (l.id.startsWith('contour')) l.layout = { ...(l.layout || {}), visibility: contours ? 'visible' : 'none' };
   return {
     version: 8,
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',

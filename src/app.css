@@ -181,15 +181,18 @@ body:not([data-public]) .routes-card { top: 64px; } /* below the dev toolbar */
 
 /* ---------- editor sidebar (dev server only) ---------- */
 :root { --ed-w: 320px; --ed-gap: 12px; --ed-line: #e6e8eb; --ed-muted: #6b7280; --ed-ink: #111827; --ed-accent: #2563eb; }
-body.editor-open #map { right: calc(var(--ed-w) + var(--ed-gap) * 2); }
+/* docked (default): a plain panel beside the map, so the map area is exactly what viewers get */
+body.editor-open #map { right: var(--ed-w); }
 .editor {
-  position: fixed; z-index: 5; top: var(--ed-gap); right: var(--ed-gap); bottom: var(--ed-gap); width: var(--ed-w);
+  position: fixed; z-index: 5; top: 0; right: 0; bottom: 0; width: var(--ed-w);
   display: none; flex-direction: column; background: #fff; color: var(--ed-ink);
-  border: 1px solid var(--ed-line); border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.08);
-  font: 13px/1.4 var(--sans); overflow: hidden;
+  border-left: 1px solid var(--ed-line); font: 13px/1.4 var(--sans); overflow: hidden;
 }
+/* floating: a card over the full-size map */
+body.ed-float.editor-open #map { right: 0; }
+body.ed-float .editor { top: var(--ed-gap); right: var(--ed-gap); bottom: var(--ed-gap); border: 1px solid var(--ed-line);
+  border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.08); }
 body.editor-open .editor { display: flex; }
-body.editor-open { background: #f4f5f7; }
 .ed-head { display: flex; align-items: center; gap: 8px; padding: 14px 14px 6px 16px; }
 .ed-name { flex: 1; min-width: 0; }
 .ed-name small { display: block; font-size: 11px; color: var(--ed-muted); text-transform: uppercase; letter-spacing: .06em; }
@@ -257,7 +260,10 @@ body.editor-open { background: #f4f5f7; }
   padding: 7px 12px; cursor: pointer; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 12px rgba(16,24,40,.08);
 }
 body:not(.editor-open):not([data-public]) .ed-open { display: block; }
-body.editor-open .routes-card { right: calc(var(--ed-w) + var(--ed-gap) * 2 + 18px); top: 18px; }
-body.editor-open .flow-panel { left: calc((100% - var(--ed-w) - var(--ed-gap) * 2) / 2); }
-body.editor-open .tuner { right: calc(var(--ed-w) + var(--ed-gap) * 2 + 18px); }
+body.editor-open { --ed-cover: var(--ed-w); }
+body.editor-open.ed-float { --ed-cover: calc(var(--ed-w) + var(--ed-gap)); }
+body.editor-open .routes-card { right: calc(var(--ed-cover) + 18px); top: 18px; }
+body.editor-open .flow-panel { left: calc((100% - var(--ed-cover)) / 2); }
+body.editor-open .tuner { right: calc(var(--ed-cover) + 18px); }
+body.ed-float.editor-open .maplibregl-ctrl-bottom-right { right: calc(var(--ed-cover) + var(--ed-gap)); }
 .editor [hidden] { display: none !important; }

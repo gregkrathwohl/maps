@@ -125,11 +125,12 @@ if (cfg.relief) {
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
 $('hillshade').checked = state.hillshade;
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
-const handNames = labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
+const handNamesOf = () => labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
+let handNames = handNamesOf();
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
-  relief: state.blender ? relief : null, handNames, contours: state.contours,
+  relief, blender: state.blender, handNames, contours: state.contours,
   veg: vegIndex && state.veg !== 'off' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
 // the editor sidebar is open by default in dev; collapsing it is a per-browser convenience
@@ -163,6 +164,10 @@ map.on('zoom', showZoom); showZoom();
 $('ed-name').textContent = `${cfg.name} ${cfg.subtitle || ''}`.trim();
 $('preview').addEventListener('click', () => window.open(`${location.pathname}?place=${place}&preview${location.hash}`, '_blank'));
 $('ed-collapse').addEventListener('click', () => setCollapsed(true));
+const floatKey = 'trail-cartography:editor-float';
+const setFloat = (on) => { document.body.classList.toggle('ed-float', on); try { localStorage.setItem(floatKey, on ? '1' : ''); } catch {} map.resize(); };
+setFloat((() => { try { return !!localStorage.getItem(floatKey); } catch { return false; } })());
+$('ed-float').addEventListener('click', () => setFloat(!document.body.classList.contains('ed-float')));
 $('ed-open').addEventListener('click', () => setCollapsed(false));
 const syncKey = () => { const k = document.querySelector('.key .sw.contour')?.closest('.k'); if (k) k.hidden = !state.contours; };
 const restyle = () => { syncKey(); map.setStyle(style(), { diff: false }); };
@@ -192,9 +197,34 @@ layer = new LabelLayer(map, {
     $('label-list').querySelector('li.on')?.scrollIntoView({ block: 'nearest' });
   },
   onDirty() { status('Saving…'); },
-  onSave(ok) { status(ok ? 'Saved' : 'Save failed'); renderLabelList(); },
+  onSave(ok) { status(ok ? 'Saved' : 'Save failed'); renderLabelList(); refreshAutoLabels(); },
 });
 renderLabelList();
+// a name taken over by a hand label disappears from the automatic (OSM) labels
+function refreshAutoLabels() {
+  const next = handNamesOf();
+  if (next.join('\u0001') === handNames.join('\u0001')) return;
+  handNames = next;
+  for (const l of style().layers) if (l.type === 'symbol' && l.filter && map.getLayer(l.id)) map.setFilter(l.id, l.filter);
+}
+// click an automatic name on the map (peak, trail, road, fort…) to turn it into a hand label you can
+// move, resize, rotate or restyle. Its automatic copies hide; delete the hand label to bring them back.
+const AUTO = { 'peak-label': 'feature', 'battery-label': 'feature', 'trail-label': 'feature', 'road-label': 'feature' };
+function adopt(ev) {
+  const layers = Object.keys(AUTO).filter(id => map.getLayer(id));
+  const p = ev.point, hits = map.queryRenderedFeatures([[p.x - 6, p.y - 6], [p.x + 6, p.y + 6]], { layers });
+  const f = hits.find(h => h.properties.name);
+  if (!f) return false;
+  const at = f.geometry.type === 'Point' ? f.geometry.coordinates : [ev.lngLat.lng, ev.lngLat.lat];
+  const line = f.layer.id === 'trail-label' || f.layer.id === 'road-label';
+  status('Saving…');
+  // point names wrap like the automatic ones (~10 characters a line); line names stay on one line
+  const wrap = (t) => t.split(' ').reduce((ls, w) => { const l = ls[ls.length - 1];
+    if (l && (l + ' ' + w).length <= 10) ls[ls.length - 1] = l + ' ' + w; else ls.push(w); return ls; }, []).join('\n');
+  layer.add([+at[0].toFixed(5), +at[1].toFixed(5)], { text: line ? f.properties.name : wrap(f.properties.name), style: AUTO[f.layer.id],
+    size: line ? 10.5 : 11.5, replaces: f.properties.name });
+  return true;
+}
 const setEditing = (on) => { $('edit').checked = on; layer.setEditing(on); };
 const edit = (key, conv = (v) => v) => (ev) => { if (layer.selected == null) return; status('Saving…'); layer.update(layer.selected, { [key]: conv(ev.target.value) }); };
 $('i-text').addEventListener('input', edit('text', v => v.replace(/\\n/g, '\n')));
@@ -217,7 +247,7 @@ $('label-list').addEventListener('click', (ev) => {
 });
 map.on('click', (ev) => {
   if (layer.editing && ev.originalEvent.altKey) { status('Saving…'); layer.add([+ev.lngLat.lng.toFixed(5), +ev.lngLat.lat.toFixed(5)]); }
-  else if (layer.editing) layer.select(null);
+  else if (layer.editing && !adopt(ev)) layer.select(null);
 });
 
 // --- view + terrain
@@ -230,7 +260,15 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 $('blender').closest('label').hidden = !relief;
 $('veg-sec').hidden = !vegIndex;
 $('contours').checked = state.contours;
-$('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); restyle(); });
+// terrain switches only flip layer visibility: no reload
+const vis = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
+const syncTerrain = () => {
+  vis('relief', state.hillshade && state.blender);
+  vis('hillshade', state.hillshade && !(relief && state.blender));
+  for (const id of ['contour', 'contour-index', 'contour-label']) vis(id, state.contours);
+  syncKey(); if (relief && state.hillshade && state.blender) refreshRelief(map);
+};
+$('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); syncTerrain(); });
 const showVal = (id, v) => { const el = $(`${id}-v`); if (el) el.textContent = (+v).toFixed(2); };
 if (vegIndex) {
   $('veg').innerHTML = ['off', ...vegIndex.palettes].map(p => `<option value="${p}">${p[0].toUpperCase() + p.slice(1)}</option>`).join('');
@@ -288,8 +326,8 @@ if (relief) {
   });
 }
 $('blender').checked = state.blender;
-$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); restyle(); });
-$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); restyle(); });
+$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); syncTerrain(); });
+$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); syncTerrain(); });
 
 // --- bay maps: water texture switch, saved routes, route planner
 if (bay) {

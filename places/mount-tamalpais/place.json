@@ -19,7 +19,12 @@
   "boundaries": [],
   "defaults": {
     "mode": "web",
-    "hillshade": true
+    "hillshade": true,
+    "contours": true,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false
   },
   "org": "",
   "extent": "bbox"

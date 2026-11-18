@@ -1,0 +1,30 @@
+{
+  "name": "Ipswich Trails",
+  "title": "Ipswich Trails",
+  "subtitle": "Trails Guide",
+  "draft": true,
+  "created": "2026-11-18",
+  "bbox": [
+    -70.95173,
+    42.62048,
+    -70.81668,
+    42.68976
+  ],
+  "center": [
+    -70.86456,
+    42.656
+  ],
+  "zoom": 12.54,
+  "extent": "bbox",
+  "areas": [],
+  "boundaries": [],
+  "defaults": {
+    "mode": "paper",
+    "hillshade": true,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false,
+    "contours": true
+  }
+}

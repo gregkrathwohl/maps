@@ -93,8 +93,8 @@ export class LabelLayer {
     this.dirty();
   }
 
-  add(at) {
-    this.labels.push({ text: 'New label', style: 'feature', size: 13, at });
+  add(at, props = {}) {
+    this.labels.push({ text: 'New label', style: 'feature', size: 13, ...props, at });
     this.render();
     this.select(this.labels.length - 1);
     this.dirty();

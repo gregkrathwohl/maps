@@ -1,1 +1,12 @@
-[]
+[
+ {
+  "text": "Mount Tamalpais West Peak",
+  "style": "feature",
+  "size": 11.5,
+  "replaces": "Mount Tamalpais West Peak",
+  "at": [
+   -122.59681,
+   37.9238
+  ]
+ }
+]
