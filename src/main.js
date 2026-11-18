@@ -169,6 +169,11 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
 }));
 $('blender').closest('label').hidden = !relief;
 $('veg').closest('label').hidden = !vegIndex;
+// forget this browser's tweaks for this place and show the map's saved defaults
+$('reset-settings').addEventListener('click', () => {
+  try { localStorage.removeItem(prefsKey); localStorage.removeItem(reliefKey); } catch {}
+  location.reload();
+});
 // copy the current look (toolbar + relief tuning) as JSON, ready to paste into place.json
 $('copy-settings').addEventListener('click', async () => {
   const keys = ['mode', 'hillshade', 'blender', 'waterMode', 'waterShade', 'currents', 'contours', 'veg', 'vegOpacity', 'vegFade'];

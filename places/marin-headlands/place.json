@@ -54,6 +54,7 @@
   "defaults": {
     "veg": "autumn",
     "vegOpacity": 0.8,
-    "vegFade": 0
+    "vegFade": 0,
+    "hillshade": true
   }
 }

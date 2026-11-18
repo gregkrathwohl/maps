@@ -195,7 +195,7 @@ def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_p
     # ground: flat class colour, gently mottled
     col = soft @ P
     col *= (1 + 0.02 * tone(gy, gx))[..., None]
-    col *= (1 + 0.025 * grain(gy + 500, gx))[..., None]          # faint, even grass grain
+    col *= (1 + 0.015 * grain(gy + 500, gx))[..., None]          # faint, even grass grain
 
     # canopy height field: overlapping soft bumps (metaballs) at jittered points in scrub
     canopy_cls = (cls == DENSE) | (cls == SCRUB)
@@ -218,7 +218,7 @@ def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_p
             y0_, x0_ = iy - k, ix - k
             sy0, sx0 = max(0, -y0_), max(0, -x0_)
             y1_, x1_ = min(hh, iy + k + 1), min(ww, ix + k + 1)
-            hfield[max(0, y0_):y1_, max(0, x0_):x1_] += st[sy0:sy0 + y1_ - max(0, y0_), sx0:sx0 + x1_ - max(0, x0_)]
+            hfield[max(0, y0_):y1_, max(0, x0_):x1_] += (0.6 + 0.8 * vv) * st[sy0:sy0 + y1_ - max(0, y0_), sx0:sx0 + x1_ - max(0, x0_)]  # bushes of different heights
     add_bumps(bush_pts, m(8), m(13), lambda c: 1.0 if c == DENSE else 0.0)
     add_bumps(scrub_pts, m(5.5), m(8.5), lambda c: 1.0 if c == SCRUB else 0.0)
 
@@ -228,28 +228,32 @@ def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_p
     yy, xx = np.mgrid[0:hh, 0:ww].astype(np.float32)
     hfield = ndimage.map_coordinates(hfield, [yy + dy, xx + dx], order=1, mode='nearest')
     hfield = 1 - np.exp(-1.6 * hfield)                         # merge overlaps into one lumpy mass
-    hfield *= 1 + 0.04 * grain(gy, gx)
+    # second octave: small leafy lumps on top of the clumps (only where there is canopy)
+    leaf = np.clip(grain(gy + 1500, gx), -1.6, 1.6)
+    hfield = hfield + 0.12 * leaf * np.clip(hfield / 0.3, 0, 1)
 
     inside = ndimage.gaussian_filter((hfield > 0.22).astype(np.float32), m(0.9))   # soft canopy mask
-    hs = ndimage.gaussian_filter(hfield, m(1.6))
+    hs = ndimage.gaussian_filter(hfield, m(0.9))
     gyy, gxx = np.gradient(hs)
-    k = m(5)                                                    # bump steepness
+    k = m(4.5)                                                  # bump steepness
     nx, ny, nz = -gxx * k, -gyy * k, np.ones_like(hs)
     L = np.array([-1, -1, 1.3]); L = L / np.linalg.norm(L)     # light from the NW, rows run south
     lam = np.clip((nx * L[0] + ny * L[1] + nz * L[2]) / np.sqrt(nx ** 2 + ny ** 2 + nz ** 2), 0, 1)
-    q = np.floor(lam * 3.99) / 3                                # a little posterized: drawn, not rendered
-    lam = 0.45 * lam + 0.55 * q
-    shade = 0.70 + 0.42 * lam
-    shade *= 0.82 + 0.18 * np.clip(hfield / 0.6, 0, 1)          # crevices between clumps darker
+    q = np.floor(lam * 5.99) / 5                                # a touch posterized: drawn, not rendered
+    lam = 0.75 * lam + 0.25 * q
+    shade = 0.55 + 0.62 * lam                                   # strong lit / shaded sides
+    shade *= 0.66 + 0.34 * np.clip(hfield / 0.75, 0, 1)         # deep crevices between clumps
 
     dense_w = ndimage.gaussian_filter((cls == DENSE).astype(np.float32), m(5))[..., None]
     ccol = (P[DENSE] * dense_w + P[SCRUB] * (1 - dense_w)) * (1 + 0.06 * tone(gy + 999, gx))[..., None]
     ccol = ccol * shade[..., None]
+    sun = np.clip((lam - 0.72) / 0.28, 0, 1)[..., None] * 0.35  # sunlit tops warm up a little
+    ccol = ccol * (1 - sun) + np.array([196, 204, 140], np.float32) * sun
 
     # drop shadow to the SE on the ground, then the canopy, then a soft scalloped outline
-    sh = ndimage.shift(inside, (m(3), m(3)), order=1, mode='constant')
-    sh = ndimage.gaussian_filter(sh, m(1.5))
-    col *= (1 - 0.22 * sh * (1 - inside))[..., None]
+    sh = ndimage.shift(inside, (m(4.5), m(4.5)), order=1, mode='constant')
+    sh = ndimage.gaussian_filter(sh, m(2))
+    col *= (1 - 0.32 * sh * (1 - inside))[..., None]
     col = col * (1 - inside[..., None]) + ccol * inside[..., None]
     edge = np.clip(1 - np.abs(inside - 0.5) * 3.2, 0, 1)
     col *= (1 - 0.38 * edge)[..., None]
