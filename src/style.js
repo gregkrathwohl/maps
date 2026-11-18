@@ -13,7 +13,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, handNames = [] }) {
+export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, water = {}, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -161,6 +161,16 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
     { id: 'osm-water', type: 'fill', source: 'osm',
       filter: ['any', ['==', ['get', 'natural'], 'water'], ['==', ['get', 'water'], 'lagoon']],
       paint: { 'fill-color': c.water } },
+    // water options: depth tint from the same DEM (Terrarium carries NOAA bathymetry), depth lines,
+    // and a hand-drawn wave texture, so the water isn't one flat colour
+    ...(water.depth ? [{ id: 'depth', type: 'color-relief', source: 'dem',
+      paint: { 'color-relief-opacity': 0.85, 'color-relief-color': ['interpolate', ['linear'], ['elevation'],
+        -80, '#6aa3c8', -40, '#86b7d6', -20, '#a2c9e0', -8, '#b8d6e7', -2, '#c9e1eb', -0.3, 'rgba(205,228,236,0)', 0, 'rgba(0,0,0,0)'] } }] : []),
+    ...(water.isobaths ? [{ id: 'isobath', type: 'line', source: 'contours', 'source-layer': 'contours',
+      filter: ['<', ['get', 'ele'], 0],
+      paint: { 'line-color': '#6f9fc0', 'line-width': W(0.4, ['case', ['>', ['get', 'level'], 0], 1.75, 1]), 'line-opacity': 0.5 } }] : []),
+    ...(water.texture === 'waves' ? [{ id: 'water-texture', type: 'fill', source: 'ofm', 'source-layer': 'water',
+      paint: { 'fill-pattern': 'waves', 'fill-opacity': 0.8 } }] : []),
     { id: 'coastline', type: 'line', source: 'osm',
       filter: ['all', ['==', ['get', 'natural'], 'coastline'], ['==', ['geometry-type'], 'LineString']],
       paint: { 'line-color': c.waterLine, 'line-width': W(0.7) } },

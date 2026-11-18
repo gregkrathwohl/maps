@@ -89,7 +89,7 @@ const PREVIEW = new URLSearchParams(location.search).has('preview');
 if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
 const EDITOR = !PUBLIC;
-const SAVED_KEYS = ['preset', 'shade', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const SAVED_KEYS = ['preset', 'shade', 'water', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
 const $ = (id) => document.getElementById(id);
 const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
@@ -110,7 +110,7 @@ let vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, ''
 let c = PALETTES[prefs.preset] || PALETTES.ecta;
 const SHADE_DEFAULT = { method: 'multidirectional', exaggeration: 0.35, direction: 315, altitude: 45, shadow: '#5d6b5a',
   highlight: '#ffffff', highlightOpacity: 1, accent: '#8a8a7a', land: null, contour: null, contourOpacity: 0.6 };
-const state = { shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+const state = { water: { texture: '', depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
   contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
@@ -133,7 +133,7 @@ let handNames = handNamesOf();
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
-  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset, shade: state.shade,
+  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset, shade: state.shade, water: state.water,
   // the painterly vegetation is its own map style (it clashes with ECTA's red trails)
   veg: vegIndex && state.preset === 'veg' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
@@ -340,6 +340,17 @@ document.querySelectorAll('[data-sh-on]').forEach(el => el.addEventListener('cha
   shadeRows(); applyShadeLive(!el.checked);   // turning a tint off needs the style's own colour back
 }));
 shadeRows();
+$('sh-reset').addEventListener('click', () => { state.shade = { preset: 'style', ...SHADE_DEFAULT }; shadeRows(); applyShadeLive(true); });
+// water (trail maps): texture, depth tint, depth lines
+document.querySelectorAll('[data-trailwater]').forEach(el => (el.hidden = bay));
+$('water-h').hidden = false;
+$('w-texture').value = state.water.texture || '';
+$('w-depth').checked = !!state.water.depth;
+$('w-isobaths').checked = !!state.water.isobaths;
+const setWater = (patch) => { state.water = { ...state.water, ...patch }; savePrefs({ water: state.water }); restyle(); };
+$('w-texture').addEventListener('change', (ev) => setWater({ texture: ev.target.value }));
+$('w-depth').addEventListener('change', (ev) => setWater({ depth: ev.target.checked }));
+$('w-isobaths').addEventListener('change', (ev) => setWater({ isobaths: ev.target.checked }));
 // terrain switches only flip layer visibility: no reload
 const vis = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
 const syncTerrain = () => {

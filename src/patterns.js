@@ -37,6 +37,15 @@ export function addImages(map, c) {
     ctx.restore();
   }), { pixelRatio: R });
 
+  // water: short hand-drawn wave strokes, staggered, like an engraver's sea
+  if (!map.hasImage('waves')) map.addImage('waves', canvas(46, 22, ctx => {
+    ctx.strokeStyle = 'rgba(70,125,165,0.55)'; ctx.lineWidth = 0.7; ctx.lineCap = 'round';
+    const wave = (x, y, w) => { ctx.beginPath(); ctx.moveTo(x, y);
+      ctx.bezierCurveTo(x + w * 0.25, y - 1.6, x + w * 0.5, y - 1.6, x + w * 0.5, y);
+      ctx.bezierCurveTo(x + w * 0.5, y + 1.4, x + w * 0.75, y + 1.4, x + w, y); ctx.stroke(); };
+    wave(4, 6, 12); wave(27, 17, 11);
+  }), { pixelRatio: R });
+
   // peak: open triangle (NPS style)
   if (!map.hasImage('peak-tri')) map.addImage('peak-tri', canvas(24, 22, ctx => {
     ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 1.6; ctx.lineJoin = 'round';

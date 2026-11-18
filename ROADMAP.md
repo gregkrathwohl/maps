@@ -134,6 +134,17 @@ Next places to try the vegetation layer on: **Bolinas Ridge** (Mt. Tam), classic
 - **Style presets:** ECTA first, then National Park (the NPS cartographic look, no gimmicks),
   Swiss, National Geographic… each built by studying real maps and listing their design patterns.
 
+## Water for trail maps (Greg, 2026-11-18)
+
+Trail maps shouldn't have flat teal water. Done: Water section (texture: waves; depth tint
+from the Terrarium DEM's NOAA bathymetry; depth lines). Still to try:
+- **Shore ripples** (waterlines) like the Richardson Bay map: needs `scripts/water.mjs` run per
+  place (coast + buffers); could become a "Generate ripples" button like vegetation.
+- **Textured / painted water** that matches the painted land (Vegetation style): a stylised,
+  slightly mottled sea, maybe brush strokes following the depth contours.
+- **Currents** for coastal trail maps (Angel Island: Raccoon Strait).
+- Curate these into the map styles so each style starts with a good water look.
+
 ## Where the data comes from
 
 | Layer | Source | How it gets in |

@@ -80,6 +80,7 @@
           <option value="style">Map style default</option><option value="google">Google-like terrain</option>
           <option value="dramatic">Dramatic</option><option value="soft">Soft (Igor)</option><option value="custom">Custom</option>
         </select></label>
+        <div class="field row"><span class="hint">Back to what the map style does</span><button id="sh-reset" class="btn">Reset</button></div>
         <p class="hint" id="sh-note" hidden>The Blender relief is on, so this hillshade is hidden. Turn Blender off to see it.</p>
         <div id="sh-fields" class="ed-group">
           <label class="field row">Method <select data-sh="method">
@@ -123,6 +124,10 @@
     </section>
 
     <section class="ed-sec" id="water-sec">
+      <h3 id="water-h">Water</h3>
+      <label class="field row" data-trailwater>Texture <select id="w-texture"><option value="">Plain</option><option value="waves">Waves</option></select></label>
+      <label class="tg" data-trailwater>Depth tint <input type="checkbox" id="w-depth" role="switch"></label>
+      <label class="tg" data-trailwater>Depth lines <input type="checkbox" id="w-isobaths" role="switch"></label>
       <label class="field row" id="water-row" hidden>Water <select id="water-mode" aria-label="Water texture">
         <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
       </select></label>

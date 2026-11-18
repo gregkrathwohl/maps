@@ -102,7 +102,7 @@ http.createServer((req, res) => {
         const dir = path.join(root, 'places', id);
         fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
         const cfg = { name, title: name, subtitle: 'Trails Guide', draft: true, created: new Date().toISOString().slice(0, 10),
-          bbox, center, zoom, extent: 'bbox', areas: [], boundaries: [], defaults: { mode: 'paper', hillshade: true } };
+          bbox, center, zoom, extent: 'bbox', areas: [], boundaries: [], defaults: { mode: 'paper', hillshade: true, contours: true, shade: { preset: 'google', method: 'combined', exaggeration: 0.85, direction: 315, altitude: 38, shadow: '#1e4436', highlight: '#e6fff1', highlightOpacity: 0.75, accent: '#2f5c4b', land: '#bfe5cf', contour: '#4f8a70', contourOpacity: 0.45 } } };
         const write = () => fs.writeFileSync(path.join(dir, 'place.json'), JSON.stringify(cfg, null, 2) + '\n');
         write();
         fs.writeFileSync(path.join(dir, 'labels.json'), '[]\n');
