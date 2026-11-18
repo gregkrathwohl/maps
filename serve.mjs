@@ -101,7 +101,7 @@ http.createServer((req, res) => {
         const dir = path.join(root, 'places', id);
         fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
         const cfg = { name, title: name, subtitle: 'Trails Guide', draft: true, created: new Date().toISOString().slice(0, 10),
-          bbox, center, zoom, extent: 'bbox', areas: [], boundaries: [], defaults: { mode: 'web', hillshade: true } };
+          bbox, center, zoom, extent: 'bbox', areas: [], boundaries: [], defaults: { mode: 'paper', hillshade: true } };
         const write = () => fs.writeFileSync(path.join(dir, 'place.json'), JSON.stringify(cfg, null, 2) + '\n');
         write();
         fs.writeFileSync(path.join(dir, 'labels.json'), '[]\n');
