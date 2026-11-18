@@ -57,12 +57,17 @@
   <div class="ed-body">
     <section class="ed-sec">
       <h3>View</h3>
-      <div class="field row">Zoom behaviour
+      <div class="field row"><span class="lbl">Zoom behaviour
+        <span class="tip" tabindex="0" aria-label="About zoom behaviour">
+          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="4.9" r=".9" fill="currentColor"/></svg>
+          <span class="tip-body" role="tooltip">
+            <b>Paper</b> Everything scales together, like a printed sheet: lines, labels and detail grow as you zoom in.
+            <b>Web</b> Lines and labels stay the same size on screen; detail thins out as you zoom out.
+          </span></span></span>
         <div class="seg" role="group" aria-label="Zoom behaviour">
           <button data-mode="web" class="on" title="Like an online map: lines and labels keep their screen size, detail thins out as you zoom out">Web</button>
           <button data-mode="paper" title="Like a printed sheet: everything scales together, all detail stays">Paper</button>
         </div></div>
-      <p class="hint">Paper: the whole map scales like a printed sheet (lines, labels, detail). Web: sizes stay fixed on screen and detail thins out when zoomed out.</p>
     </section>
 
     <section class="ed-sec">

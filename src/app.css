@@ -267,3 +267,19 @@ body.editor-open .flow-panel { left: calc((100% - var(--ed-cover)) / 2); }
 body.editor-open .tuner { right: calc(var(--ed-cover) + 18px); }
 body.ed-float.editor-open .maplibregl-ctrl-bottom-right { right: calc(var(--ed-cover) + var(--ed-gap)); }
 .editor [hidden] { display: none !important; }
+
+/* info tooltips in the editor */
+.editor .lbl { display: inline-flex; align-items: center; gap: 5px; color: var(--ed-ink); font-size: 13px; }
+.tip { position: relative; display: inline-grid; place-items: center; color: #9ca3af; cursor: help; border-radius: 50%; }
+.tip:hover, .tip:focus-visible { color: var(--ed-ink); outline: none; }
+.tip-body {
+  position: absolute; z-index: 10; top: calc(100% + 8px); left: -8px; width: 248px; display: none;
+  background: #111827; color: #e5e7eb; border-radius: 8px; padding: 10px 12px; box-shadow: 0 6px 20px rgba(0,0,0,.18);
+  font: 12px/1.45 var(--sans); white-space: normal; cursor: default;
+}
+.tip-body b { display: block; color: #fff; font-weight: 600; margin-top: 6px; }
+.tip-body b:first-child { margin-top: 0; }
+.tip:hover .tip-body, .tip:focus-within .tip-body { display: block; }
+.editor .field .tip-body { color: #e5e7eb; font-size: 12px; }
+.editor .field .tip { color: #9ca3af; }
+.editor .field .tip:hover { color: var(--ed-ink); }
