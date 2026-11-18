@@ -74,6 +74,31 @@
     <section class="ed-sec">
       <h3>Terrain</h3>
       <label class="tg">Hillshade <input type="checkbox" id="hillshade" role="switch"></label>
+      <details class="ed-more" id="shade-adv">
+        <summary>Advanced hillshade</summary>
+        <label class="field row">Look <select id="sh-preset">
+          <option value="style">Map style default</option><option value="google">Google-like terrain</option>
+          <option value="dramatic">Dramatic</option><option value="soft">Soft (Igor)</option><option value="custom">Custom</option>
+        </select></label>
+        <p class="hint" id="sh-note" hidden>The Blender relief is on, so this hillshade is hidden. Turn Blender off to see it.</p>
+        <div id="sh-fields" class="ed-group">
+          <label class="field row">Method <select data-sh="method">
+            <option value="standard">Standard</option><option value="basic">Basic</option><option value="combined">Combined</option>
+            <option value="igor">Igor (soft)</option><option value="multidirectional">Multidirectional</option></select></label>
+          <label class="field">Strength<span data-v="exaggeration"></span><input type="range" data-sh="exaggeration" min="0" max="1" step="0.01"></label>
+          <label class="field">Sun direction (°)<span data-v="direction"></span><input type="range" data-sh="direction" min="0" max="359" step="1"></label>
+          <label class="field">Sun height (°)<span data-v="altitude"></span><input type="range" data-sh="altitude" min="5" max="90" step="1"></label>
+          <label class="field row">Shadow colour <input type="color" data-sh="shadow"></label>
+          <label class="field row">Highlight colour <input type="color" data-sh="highlight"></label>
+          <label class="field">Highlight strength<span data-v="highlightOpacity"></span><input type="range" data-sh="highlightOpacity" min="0" max="1" step="0.01"></label>
+          <label class="field row">Crease colour <input type="color" data-sh="accent"></label>
+          <label class="tg">Tint the land <input type="checkbox" data-sh-on="land" role="switch"></label>
+          <label class="field row" data-row="land">Land colour <input type="color" data-sh="land"></label>
+          <label class="tg">Recolour contours <input type="checkbox" data-sh-on="contour" role="switch"></label>
+          <label class="field row" data-row="contour">Contour colour <input type="color" data-sh="contour"></label>
+          <label class="field" data-row="contour">Contour opacity<span data-v="contourOpacity"></span><input type="range" data-sh="contourOpacity" min="0" max="1" step="0.01"></label>
+        </div>
+      </details>
       <label class="tg">Blender relief <input type="checkbox" id="blender" role="switch"></label>
       <label class="tg">Contours <input type="checkbox" id="contours" role="switch"></label>
       <details class="ed-more" id="relief-tuner">

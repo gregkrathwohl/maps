@@ -1,7 +1,7 @@
 import * as maplibregl from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
 import { PALETTES, PRESETS } from './palette.js';
-import { buildStyle, outsideMask, vegOpacity } from './style.js';
+import { buildStyle, outsideMask, vegOpacity, SHADE_PRESETS, shadePaint } from './style.js';
 import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
@@ -89,7 +89,7 @@ const PREVIEW = new URLSearchParams(location.search).has('preview');
 if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
 const EDITOR = !PUBLIC;
-const SAVED_KEYS = ['preset', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const SAVED_KEYS = ['preset', 'shade', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
 const $ = (id) => document.getElementById(id);
 const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
@@ -108,7 +108,9 @@ let vegIndex = cfg.vegetation?.index
   ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
 let vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
 let c = PALETTES[prefs.preset] || PALETTES.ecta;
-const state = { preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+const SHADE_DEFAULT = { method: 'multidirectional', exaggeration: 0.35, direction: 315, altitude: 45, shadow: '#5d6b5a',
+  highlight: '#ffffff', highlightOpacity: 1, accent: '#8a8a7a', land: null, contour: null, contourOpacity: 0.6 };
+const state = { shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
   contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
@@ -131,7 +133,7 @@ let handNames = handNamesOf();
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
-  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset,
+  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset, shade: state.shade,
   // the painterly vegetation is its own map style (it clashes with ECTA's red trails)
   veg: vegIndex && state.preset === 'veg' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
@@ -294,6 +296,50 @@ $('preset').addEventListener('change', (ev) => {
 });
 $('blender').closest('label').hidden = !relief;
 $('contours').checked = state.contours;
+// advanced hillshade: presets fill the fields; touching any field makes it "Custom". Applied live.
+const shadeRows = () => {
+  const s = state.shade;
+  $('sh-preset').value = s.preset;
+  document.querySelectorAll('[data-sh]').forEach(el => {
+    const k = el.dataset.sh, v = s[k] ?? (k === 'land' ? c.openSpace : k === 'contour' ? c.contour : null);
+    if (v != null) el.value = v;
+  });
+  document.querySelectorAll('[data-v]').forEach(el => { el.textContent = s[el.dataset.v] ?? ''; });
+  for (const k of ['land', 'contour']) {
+    document.querySelector(`[data-sh-on="${k}"]`).checked = !!s[k];
+    document.querySelectorAll(`[data-row="${k}"]`).forEach(r => (r.hidden = !s[k]));
+  }
+  $('sh-note').hidden = !(relief && state.blender);
+  $('shade-adv').hidden = !state.hillshade;
+};
+const applyShadeLive = (structural) => {
+  savePrefs({ shade: state.shade });
+  if (structural || state.shade.preset === 'style') { restyle(); return; }
+  if (map.getLayer('hillshade')) for (const [k, v] of Object.entries(shadePaint(state.shade))) map.setPaintProperty('hillshade', k, v);
+  if (map.getLayer('open-space') && state.shade.land) map.setPaintProperty('open-space', 'fill-color', state.shade.land);
+  if (state.shade.contour) for (const id of ['contour', 'contour-index']) if (map.getLayer(id)) {
+    map.setPaintProperty(id, 'line-color', state.shade.contour); map.setPaintProperty(id, 'line-opacity', +state.shade.contourOpacity);
+  }
+};
+$('sh-preset').addEventListener('change', (ev) => {
+  const p = ev.target.value;
+  state.shade = p === 'custom' ? { ...state.shade, preset: 'custom' }
+    : { ...SHADE_DEFAULT, ...(SHADE_PRESETS[p] || {}), preset: p };
+  // the Google look relies on contours, so switch them on with it
+  if (p === 'google' && !state.contours) { state.contours = true; $('contours').checked = true; savePrefs({ contours: true }); }
+  shadeRows(); applyShadeLive(true);
+});
+document.querySelectorAll('[data-sh]').forEach(el => el.addEventListener('input', () => {
+  const k = el.dataset.sh;
+  state.shade = { ...state.shade, preset: 'custom', [k]: el.type === 'range' ? +el.value : el.value };
+  shadeRows(); applyShadeLive(false);
+}));
+document.querySelectorAll('[data-sh-on]').forEach(el => el.addEventListener('change', () => {
+  const k = el.dataset.shOn;
+  state.shade = { ...state.shade, preset: 'custom', [k]: el.checked ? (k === 'land' ? c.openSpace : c.contour) : null };
+  shadeRows(); applyShadeLive(!el.checked);   // turning a tint off needs the style's own colour back
+}));
+shadeRows();
 // terrain switches only flip layer visibility: no reload
 const vis = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
 const syncTerrain = () => {
@@ -390,8 +436,8 @@ if (relief) {
   });
 }
 $('blender').checked = state.blender;
-$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); syncTerrain(); });
-$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); syncTerrain(); });
+$('blender').addEventListener('change', (ev) => { state.blender = ev.target.checked; savePrefs({ blender: state.blender }); syncTerrain(); shadeRows(); });
+$('hillshade').addEventListener('change', (ev) => { state.hillshade = ev.target.checked; savePrefs({ hillshade: state.hillshade }); syncTerrain(); shadeRows(); });
 
 // --- bay maps: water texture switch, saved routes, route planner
 if (bay) {

@@ -13,7 +13,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', handNames = [] }) {
+export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -192,6 +192,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
 
   if (preset === 'nps') npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, notHand });
   if (preset === 'veg') vegLayers(layers, { c, W, minz, hw, carFree, trailFilter, informal });
+  applyShade(layers, shade);
   for (const l of layers) if (l.id.startsWith('contour')) l.layout = { ...(l.layout || {}), visibility: contours ? 'visible' : 'none' };
   return {
     version: 8,
@@ -295,4 +296,43 @@ function vegLayers(layers, { c, W, minz, hw, carFree, trailFilter, informal }) {
   }
   set('trail-label', l => Object.assign(l.paint, { 'text-color': c.trail, 'text-halo-color': 'rgba(251,246,234,0.9)', 'text-halo-width': 1.4 }));
   set('peak-label', l => { l.paint = { 'text-color': '#1f1f1f', 'text-halo-color': 'rgba(251,246,234,0.85)', 'text-halo-width': 1.4 }; });
+}
+
+// ---- advanced hillshade ("shade"): presets + custom values, applied on top of the map style.
+// preset 'style' = whatever the map style does. Everything here is a plain paint property, so the
+// editor can also set it live without rebuilding the style.
+export const SHADE_PRESETS = {
+  style: null,
+  google: {   // reverse-engineered from Google Maps' terrain layer: strong teal shading, mint land, faint contours
+    method: 'combined', exaggeration: 0.85, direction: 315, altitude: 38,
+    shadow: '#1e4436', highlight: '#e6fff1', highlightOpacity: 0.75, accent: '#2f5c4b',
+    land: '#bfe5cf', contour: '#4f8a70', contourOpacity: 0.45,
+  },
+  dramatic: {
+    method: 'standard', exaggeration: 1, direction: 300, altitude: 25,
+    shadow: '#2a2a2a', highlight: '#ffffff', highlightOpacity: 0.6, accent: '#3a3a3a',
+    land: null, contour: null, contourOpacity: null,
+  },
+  soft: {
+    method: 'igor', exaggeration: 0.6, direction: 315, altitude: 45,
+    shadow: '#55605a', highlight: '#ffffff', highlightOpacity: 0.4, accent: '#6b746f',
+    land: null, contour: null, contourOpacity: null,
+  },
+};
+const rgba = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+export function shadePaint(s) {
+  return {
+    'hillshade-method': s.method, 'hillshade-exaggeration': +s.exaggeration,
+    'hillshade-illumination-direction': +s.direction, 'hillshade-illumination-altitude': +s.altitude,
+    'hillshade-shadow-color': s.shadow, 'hillshade-accent-color': s.accent,
+    'hillshade-highlight-color': rgba(s.highlight, s.highlightOpacity ?? 1),
+  };
+}
+function applyShade(layers, shade) {
+  if (!shade || shade.preset === 'style') return;
+  const l = layers.find(x => x.id === 'hillshade');
+  if (l) l.paint = { ...l.paint, ...shadePaint(shade) };
+  if (shade.land) for (const x of layers) if (x.id === 'open-space') x.paint['fill-color'] = shade.land;
+  if (shade.contour) for (const x of layers) if (x.id === 'contour' || x.id === 'contour-index')
+    Object.assign(x.paint, { 'line-color': shade.contour, 'line-opacity': shade.contourOpacity ?? 0.5 });
 }
