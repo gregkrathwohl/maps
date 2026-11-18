@@ -289,6 +289,8 @@ $('preset').addEventListener('change', (ev) => {
   state.contours = state.preset === 'ecta'; $('contours').checked = state.contours;   // NPS + vegetation: relief, no contours
   savePrefs({ preset: state.preset, contours: state.contours });
   applyPreset(); restyle();
+  // first time a map picks the painted style: start making its vegetation (minutes; progress in the sidebar)
+  if (state.preset === 'veg' && !vegIndex) vegJob(true);
 });
 $('blender').closest('label').hidden = !relief;
 $('contours').checked = state.contours;
