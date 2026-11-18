@@ -23,6 +23,7 @@ const run = (cmd, args) => new Promise((ok, no) => {
   p.on('close', code => (code === 0 ? ok(log) : no(new Error(`${path.basename(cmd)} exited ${code}: ${log.slice(-400)}`))));
 });
 
+const vegJobs = {};
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   const file = path.join(root, decodeURIComponent(url.pathname));
@@ -113,6 +114,29 @@ http.createServer((req, res) => {
       } catch (e) { res.writeHead(500).end(String(e?.message || e)); }
     });
     return;
+  }
+
+  // /api/vegetation/<place>: POST starts scripts/vegetation.py in the background (NAIP download +
+  // render, several minutes); GET reports progress {running, done, total, error}
+  const vm = url.pathname.match(/^\/api\/vegetation\/([\w-]+)$/);
+  if (vm) {
+    const id = vm[1];
+    const send = (o) => res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }).end(JSON.stringify(o));
+    if (req.method === 'POST') {
+      if (vegJobs[id]?.running) return send(vegJobs[id]);
+      const job = vegJobs[id] = { running: true, done: 0, total: 0, log: '', started: Date.now() };
+      const p = spawn(path.join(root, '.venv/bin/python'), ['scripts/vegetation.py', id], { cwd: root });
+      const read = (d) => {
+        job.log = (job.log + d).slice(-4000);
+        for (const m of String(d).matchAll(/(\d+) tiles|tile (\d+)\/(\d+) done/g)) {
+          if (m[1]) job.total = +m[1]; else { job.done = +m[2]; job.total = +m[3]; }
+        }
+      };
+      p.stdout.on('data', read); p.stderr.on('data', read);
+      p.on('close', (code) => { job.running = false; if (code !== 0) job.error = job.log.slice(-400); });
+      return send(job);
+    }
+    return send(vegJobs[id] || { running: false });
   }
 
   // GET /api/places — every places/<id>/place.json, for the library page

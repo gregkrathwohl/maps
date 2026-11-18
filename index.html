@@ -88,9 +88,13 @@
 
     <section class="ed-sec" id="veg-sec" hidden>
       <h3>Vegetation</h3>
-      <label class="field row">Palette <select id="veg"></select></label>
-      <label class="field">Opacity<span id="veg-opacity-v"></span><input type="range" id="veg-opacity" min="0" max="1" step="0.05"></label>
-      <label class="field">Fade when zoomed out<span id="veg-fade-v"></span><input type="range" id="veg-fade" min="0" max="1" step="0.05"></label>
+      <div id="veg-controls" class="ed-group">
+        <label class="field row">Season <select id="veg"></select></label>
+        <label class="field">Opacity<span id="veg-opacity-v"></span><input type="range" id="veg-opacity" min="0" max="1" step="0.05"></label>
+        <label class="field">Fade when zoomed out<span id="veg-fade-v"></span><input type="range" id="veg-fade" min="0" max="1" step="0.05"></label>
+      </div>
+      <p class="hint">Drawn from USDA aerial photos (NAIP): downloads the imagery for this map and paints it, about 5–10 minutes.</p>
+      <div class="field row"><span id="veg-status" class="hint"></span><button id="veg-go" class="btn">Generate vegetation</button></div>
     </section>
 
     <section class="ed-sec" id="water-sec">

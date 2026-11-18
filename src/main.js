@@ -104,14 +104,14 @@ const savePrefs = (patch) => {
     .then(() => status('Saved')).catch(e => status(`Save failed: ${e.message}`)), 500);
 };
 // painterly vegetation tiles: data/veg/veg.json lists each tile's corners (not in the public build yet)
-const vegIndex = cfg.vegetation?.index
+let vegIndex = cfg.vegetation?.index
   ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
-const vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
+let vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
 let c = PALETTES[prefs.preset] || PALETTES.ecta;
 const state = { preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
-  blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg || 'off',
+  blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
-  contours: (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')) || (!vegIndex && !!prefs.veg && prefs.veg !== 'off'),
+  contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
   vegOpacity: prefs.vegOpacity ?? 1, vegFade: prefs.vegFade ?? 0 };
 // Blender relief: the grey render, turned into shadows + highlights in a canvas pinned to the
 // bbox corners (NW, NE, SE, SW). The look is tunable live and autosaved to place.json.
@@ -132,7 +132,8 @@ const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
   relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset,
-  veg: vegIndex && state.veg !== 'off' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
+  // the painterly vegetation is its own map style (it clashes with ECTA's red trails)
+  veg: vegIndex && state.preset === 'veg' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
 // the editor sidebar is open by default in dev; collapsing it is a per-browser convenience
 const edKey = 'trail-cartography:editor-collapsed';
@@ -186,6 +187,8 @@ const npsKey = `
   <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after National Park Service maps (Harpers Ferry Center).</p>`;
 const applyPreset = () => {
   document.body.classList.toggle('preset-nps', state.preset === 'nps');
+  document.body.classList.toggle('preset-veg', state.preset === 'veg');
+  const vs = document.getElementById('veg-sec'); if (vs) vs.hidden = bay || state.preset !== 'veg';
   if (!bay) document.querySelector('.key').innerHTML = state.preset === 'nps' ? npsKey : ectaKey;
 };
 applyPreset();
@@ -283,12 +286,11 @@ $('preset').closest('label').hidden = bay;
 $('preset').addEventListener('change', (ev) => {
   state.preset = ev.target.value; c = PALETTES[state.preset];
   // NPS maps show relief, not contours
-  state.contours = state.preset !== 'nps' && !(vegIndex && state.veg !== 'off'); $('contours').checked = state.contours;
+  state.contours = state.preset === 'ecta'; $('contours').checked = state.contours;   // NPS + vegetation: relief, no contours
   savePrefs({ preset: state.preset, contours: state.contours });
   applyPreset(); restyle();
 });
 $('blender').closest('label').hidden = !relief;
-$('veg-sec').hidden = !vegIndex;
 $('contours').checked = state.contours;
 // terrain switches only flip layer visibility: no reload
 const vis = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, 'visibility', on ? 'visible' : 'none');
@@ -300,21 +302,51 @@ const syncTerrain = () => {
 };
 $('contours').addEventListener('change', (ev) => { state.contours = ev.target.checked; savePrefs({ contours: state.contours }); syncTerrain(); });
 const showVal = (id, v) => { const el = $(`${id}-v`); if (el) el.textContent = (+v).toFixed(2); };
-if (vegIndex) {
-  $('veg').innerHTML = ['off', ...vegIndex.palettes].map(p => `<option value="${p}">${p[0].toUpperCase() + p.slice(1)}</option>`).join('');
+// vegetation: palette + opacity when the tiles exist; a button to make them (several minutes, dev server)
+const setupVeg = () => {
+  $('veg-controls').hidden = !vegIndex;
+  $('veg-go').textContent = vegIndex ? 'Regenerate vegetation' : 'Generate vegetation';
+  if (!vegIndex) return;
+  $('veg').innerHTML = vegIndex.palettes.map(p => `<option value="${p}">${p[0].toUpperCase() + p.slice(1)}</option>`).join('');
+  if (!vegIndex.palettes.includes(state.veg)) state.veg = vegIndex.palettes[0];
   $('veg').value = state.veg;
-  $('veg').addEventListener('change', (ev) => { state.veg = ev.target.value; state.contours = state.veg === 'off'; $('contours').checked = state.contours;
-    savePrefs({ veg: state.veg, contours: state.contours }); restyle(); });
-  // opacity + zoomed-out fade, live (no style rebuild)
-  for (const [id, key] of [['veg-opacity', 'vegOpacity'], ['veg-fade', 'vegFade']]) {
-    $(id).value = state[key]; showVal(id, state[key]);
-    $(id).addEventListener('input', (ev) => {
-      state[key] = +ev.target.value; showVal(id, state[key]); savePrefs({ [key]: state[key] });
-      const op = vegOpacity({ opacity: state.vegOpacity, fade: state.vegFade });
-      for (const l of map.getStyle().layers) if (l.id.startsWith('veg-')) map.setPaintProperty(l.id, 'raster-opacity', op);
-    });
-  }
+};
+setupVeg();
+$('veg').addEventListener('change', (ev) => { state.veg = ev.target.value; savePrefs({ veg: state.veg }); restyle(); });
+// opacity + zoomed-out fade, live (no style rebuild)
+for (const [id, key] of [['veg-opacity', 'vegOpacity'], ['veg-fade', 'vegFade']]) {
+  $(id).value = state[key]; showVal(id, state[key]);
+  $(id).addEventListener('input', (ev) => {
+    state[key] = +ev.target.value; showVal(id, state[key]); savePrefs({ [key]: state[key] });
+    const op = vegOpacity({ opacity: state.vegOpacity, fade: state.vegFade });
+    for (const l of map.getStyle().layers) if (l.id.startsWith('veg-')) map.setPaintProperty(l.id, 'raster-opacity', op);
+  });
 }
+let vegWatching = false;
+const vegJob = async (start) => {
+  const r = await fetch(`/api/vegetation/${place}`, { method: start ? 'POST' : 'GET' }).then(r => r.json()).catch(() => null);
+  if (!r) return;
+  const secs = r.started ? Math.round((Date.now() - r.started) / 1000) : 0;
+  if (r.running) {
+    vegWatching = true; $('veg-go').disabled = true;
+    $('veg-status').textContent = r.total ? `Rendering tile ${Math.min(r.done + 1, r.total)} of ${r.total}… ${secs} s`
+      : `Downloading aerial imagery… ${secs} s`;
+    setTimeout(() => vegJob(false), 3000);
+    return;
+  }
+  $('veg-go').disabled = false;
+  if (r.error) { $('veg-status').textContent = `Failed: ${r.error.slice(-160)}`; return; }
+  if (!vegWatching) return;   // finished before this page opened: nothing new to load
+  vegWatching = false;
+  $('veg-status').textContent = `Done in ${Math.round(secs / 60)} min`;
+  const c2 = await fetch(`${base}/place.json`, { cache: 'reload' }).then(r => r.json());
+  cfg.vegetation = c2.vegetation;
+  vegIndex = await fetch(`${base}/${cfg.vegetation.index}`, { cache: 'reload' }).then(r => r.json());
+  vegBase = `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
+  setupVeg(); restyle();
+};
+$('veg-go').addEventListener('click', () => vegJob(true));
+vegJob(false);   // a job may already be running (e.g. after a reload)
 map.on('style.load', () => refreshRelief(map));
 map.on('load', () => refreshRelief(map));
 $('relief-tuner').hidden = !relief;

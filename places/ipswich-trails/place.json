@@ -25,6 +25,8 @@
     "waterShade": 0,
     "currents": true,
     "colour": false,
-    "contours": true
+    "contours": false,
+    "preset": "veg",
+    "veg": "green"
   }
 }

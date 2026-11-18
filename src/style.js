@@ -191,6 +191,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
   ];
 
   if (preset === 'nps') npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, notHand });
+  if (preset === 'veg') vegLayers(layers, { c, W, minz, hw, carFree, trailFilter, informal });
   for (const l of layers) if (l.id.startsWith('contour')) l.layout = { ...(l.layout || {}), visibility: contours ? 'visible' : 'none' };
   return {
     version: 8,
@@ -269,4 +270,29 @@ function npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, 
   });
   set('battery-label', l => { l.paint['text-halo-color'] = 'rgba(236,236,235,0.7)'; });
   set('contour-label', l => { l.paint['text-halo-color'] = c.openSpace; });
+}
+
+// Vegetation preset: the painted land cover carries the map; trails are dark ink on a cream
+// casing (red fights the greens), roads are pale with a dark edge, no contours by default.
+function vegLayers(layers, { c, W, minz, hw, carFree, trailFilter, informal }) {
+  const at = (id) => layers.findIndex(l => l.id === id);
+  const set = (id, fn) => { const l = layers[at(id)]; if (l) fn(l); };
+  const halo = at('trail-halo'); if (halo >= 0) layers.splice(halo, 1);
+  // shadows only: white highlights wash the colour out (same lesson as the Blender relief)
+  set('hillshade', l => Object.assign(l.paint, { 'hillshade-exaggeration': 0.45, 'hillshade-shadow-color': '#33402f',
+    'hillshade-highlight-color': 'rgba(255,255,255,0)', 'hillshade-accent-color': '#4a5546' }));
+  const casing = { id: 'trail-casing', type: 'line', source: 'osm', minzoom: minz(11), filter: trailFilter,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': c.trailCasing, 'line-opacity': 0.85, 'line-width': W(3.4) } };
+  layers.splice(at('trail'), 0, casing);
+  set('trail', l => Object.assign(l.paint, { 'line-color': c.trail, 'line-width': W(1.5) }));
+  set('trail-informal', l => Object.assign(l.paint, { 'line-color': c.trail, 'line-width': W(1.1), 'line-dasharray': [2, 1.6] }));
+  for (const [id, w] of [['road-street', 1.2], ['road-main', 1.7]]) {
+    const i = at(id); if (i < 0) continue;
+    const l = layers[i];
+    layers.splice(i, 0, { ...l, id: `${id}-casing`, paint: { 'line-color': c.road, 'line-width': W(w + 1.2) } });
+    l.paint = { 'line-color': c.roadFill, 'line-width': W(w) };
+  }
+  set('trail-label', l => Object.assign(l.paint, { 'text-color': c.trail, 'text-halo-color': 'rgba(251,246,234,0.9)', 'text-halo-width': 1.4 }));
+  set('peak-label', l => { l.paint = { 'text-color': '#1f1f1f', 'text-halo-color': 'rgba(251,246,234,0.85)', 'text-halo-width': 1.4 }; });
 }

@@ -54,5 +54,12 @@ export const nps = {
   inkSoft: '#5f5f5f',
   peak: '#6b6b6b',
 };
-export const PALETTES = { ecta: ipswich, nps };
-export const PRESETS = [['ecta', 'ECTA trails guide'], ['nps', 'National Park']];
+// Vegetation: the painterly land cover is the base; trails and roads must read on green and brown
+export const vegStyle = {
+  ...ipswich,
+  trail: '#2d221c', trailCasing: '#fbf6ea',
+  road: '#3a3a3a', roadFill: '#fbfaf6', highway: '#fbfaf6',
+  boundary: '#3a3a3a', outside: '#e4e3dc', outsideOpacity: 0.7,
+};
+export const PALETTES = { ecta: ipswich, nps, veg: vegStyle };
+export const PRESETS = [['ecta', 'ECTA trails guide'], ['nps', 'National Park'], ['veg', 'Vegetation (painted)']];

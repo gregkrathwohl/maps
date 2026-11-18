@@ -1,0 +1,218 @@
+[
+ {
+  "text": "SAN FRANCISCO\nBAY",
+  "style": "ocean",
+  "size": 24,
+  "at": [
+   -122.4285,
+   37.8515
+  ]
+ },
+ {
+  "text": "Raccoon Strait",
+  "style": "water",
+  "size": 17,
+  "at": [
+   -122.444,
+   37.8722
+  ],
+  "rotate": -28,
+  "spacing": 0.14
+ },
+ {
+  "text": "Ayala\nCove",
+  "style": "water",
+  "size": 12,
+  "at": [
+   -122.4362,
+   37.8698
+  ]
+ },
+ {
+  "text": "Winslow\nCove",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.425,
+   37.8722
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "China\nCove",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.4232,
+   37.8706
+  ],
+  "minzoom": 14.5
+ },
+ {
+  "text": "Belvedere\nCove",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.4572,
+   37.8689
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "Mount\nLivermore",
+  "style": "area",
+  "size": 15,
+  "at": [
+   -122.431,
+   37.8628
+  ],
+  "replaces": "Mount Caroline Livermore"
+ },
+ {
+  "text": "Camp\nReynolds",
+  "style": "area",
+  "size": 13,
+  "at": [
+   -122.444,
+   37.859
+  ]
+ },
+ {
+  "text": "Fort\nMcDowell",
+  "style": "area",
+  "size": 13,
+  "at": [
+   -122.4188,
+   37.8618
+  ]
+ },
+ {
+  "text": "Immigration\nStation",
+  "style": "area",
+  "size": 13,
+  "at": [
+   -122.427,
+   37.8678
+  ]
+ },
+ {
+  "text": "Perles\nBeach",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.439,
+   37.854
+  ]
+ },
+ {
+  "text": "Quarry\nBeach",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4188,
+   37.859
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "Sand Springs\nBeach",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4282,
+   37.8542
+  ],
+  "minzoom": 14
+ },
+ {
+  "text": "Point\nBlunt",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4175,
+   37.854
+  ]
+ },
+ {
+  "text": "Point\nStuart",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4478,
+   37.8616
+  ]
+ },
+ {
+  "text": "Point\nKnox",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4445,
+   37.8552
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "TIBURON",
+  "style": "town",
+  "size": 20,
+  "at": [
+   -122.456,
+   37.877
+  ]
+ },
+ {
+  "text": "BELVEDERE",
+  "style": "town",
+  "size": 16,
+  "at": [
+   -122.465,
+   37.8705
+  ]
+ },
+ {
+  "text": "1",
+  "style": "locator",
+  "size": 13,
+  "at": [
+   -122.4335,
+   37.8668
+  ]
+ },
+ {
+  "text": "2",
+  "style": "locator",
+  "size": 13,
+  "at": [
+   -122.4318,
+   37.8598
+  ]
+ },
+ {
+  "text": "3",
+  "style": "locator",
+  "size": 13,
+  "at": [
+   -122.4245,
+   37.8695
+  ]
+ },
+ {
+  "text": "4",
+  "style": "locator",
+  "size": 13,
+  "at": [
+   -122.442,
+   37.8612
+  ]
+ },
+ {
+  "text": "5",
+  "style": "locator",
+  "size": 13,
+  "at": [
+   -122.4215,
+   37.864
+  ]
+ }
+]

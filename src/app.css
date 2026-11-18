@@ -302,3 +302,8 @@ body.preset-nps .hand-label:not(.locator) { font-family: var(--sans) !important;
 .sw.nps-hwy { height: 6px; margin: 3px 0; border: 1.5px solid #2b2b2b; background: #9a3b2e; }
 .sw.nps-park { background: #c3cec7; }
 .sw.nps-peak::after { content: "△"; position: absolute; left: 9px; top: -3px; font-size: 13px; color: #4a4a4a; }
+.editor .ed-group { display: grid; gap: 10px; }
+.editor .ed-group[hidden] { display: none; }
+
+/* Vegetation preset: legend trail = dark ink on cream */
+body.preset-veg .sw.trail::after { border-top-color: #2d221c; box-shadow: 0 0 0 1.5px #fbf6ea; }

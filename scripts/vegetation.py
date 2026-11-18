@@ -103,12 +103,12 @@ def main():
     cfg = json.loads((root / 'place.json').read_text())
     w, s, e, n = cfg.get('vegetation', {}).get('bbox', cfg['bbox'])
     X0, Y0 = merc(w, s); X1, Y1 = merc(e, n)
-    res = a.res
+    res = max(a.res, max(X1 - X0, Y1 - Y0) / 12500)   # keep big maps to ~16 tiles
     W, H = round((X1 - X0) / res), round((Y1 - Y0) / res)
     m = lambda metres: metres / res          # metres → pixels
     out = root / 'data' / 'veg'; out.mkdir(parents=True, exist_ok=True)
     cache = root / 'data' / 'naip'; cache.mkdir(parents=True, exist_ok=True)
-    print(f'{W}×{H} px @ {res} m')
+    print(f'{W}×{H} px @ {res:.2f} m, {math.ceil(H / a.tile) * math.ceil(W / a.tile)} tiles', flush=True)
 
     # global randomness: bush positions, sizes, noise fields
     bush_pts = jitter_grid(11, W, H, m(12))
@@ -128,6 +128,7 @@ def main():
     polys = [(f, is_park(f['properties'])) for f in osm['features']
              if f['geometry']['type'] in ('Polygon', 'MultiPolygon') and (is_park(f['properties']) or is_dev(f['properties']))]
 
+    clip_all = cfg.get('extent') == 'bbox'
     T, M = a.tile, 64
     rows, cols = math.ceil(H / T), math.ceil(W / T)
     only = tuple(map(int, a.only.split(','))) if a.only else None
@@ -150,9 +151,9 @@ def main():
             naip = fetch_naip(cache / f'{ti}-{tj}.npy', wx0, wy1 - hh * res, wx0 + ww * res, wy1, ww, hh)
             for pal in PALETTES:
                 img = render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_pts,
-                                  warp1, warp2, tone, grain, polys, X0, Y1)
+                                  warp1, warp2, tone, grain, polys, X0, Y1, clip_all)
                 img.crop((M, M, M + tw, M + th)).save(out / f'{pal}-{ti}-{tj}.webp', quality=86, method=5)
-            print(f'tile {ti},{tj} done')
+            print(f'tile {ti * cols + tj + 1}/{rows * cols} done', flush=True)
     (out / 'veg.json').write_text(json.dumps({'res': res, 'palettes': list(PALETTES), 'tiles': tiles}, indent=1))
     cfg['vegetation'] = {**cfg.get('vegetation', {}), 'index': 'data/veg/veg.json'}
     (root / 'place.json').write_text(json.dumps(cfg, indent=2) + '\n')
@@ -187,7 +188,7 @@ def classify(naip, m):
     return cls, water, soft
 
 
-def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_pts, warp1, warp2, tone, grain, polys, X0, Y1):
+def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_pts, warp1, warp2, tone, grain, polys, X0, Y1, clip_all=False):
     cls, water, soft = classify(naip, m)
     P = np.array(PALETTES[pal], np.float32)
     gy, gx = np.mgrid[gy0:gy0 + hh, gx0:gx0 + ww].astype(np.float32)
@@ -278,7 +279,8 @@ def render_tile(naip, gy0, gx0, hh, ww, res, m, pal, bush_pts, scrub_pts, tuft_p
     img = img.resize((ww, hh), Image.LANCZOS)
 
     # alpha: parks/open space only, never water
-    mask = Image.new('L', (ww * SS, hh * SS), 0)
+    # extent 'bbox': all land in the frame; otherwise parks only. Developed land is cut out either way.
+    mask = Image.new('L', (ww * SS, hh * SS), 255 if clip_all else 0)
     md = ImageDraw.Draw(mask)
     to_px = lambda c: ((merc(*c)[0] - X0) / res * SS - gx0 * SS, (Y1 - merc(*c)[1]) / res * SS - gy0 * SS)
     for park in (True, False):                                   # parks first, then cut out developed
