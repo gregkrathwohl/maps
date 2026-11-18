@@ -28,5 +28,8 @@
     "contours": false,
     "preset": "veg",
     "veg": "green"
+  },
+  "vegetation": {
+    "index": "data/veg/veg.json"
   }
 }
