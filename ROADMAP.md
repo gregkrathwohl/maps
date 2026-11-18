@@ -88,6 +88,19 @@ After a few more rounds on the Headlands map, turn the pipeline into an app:
 4. Add points of interest, then publish: a web map / app anyone can open.
 Greg does the hand-tweaking (labels etc.) himself; the job here is the editor + good defaults.
 
+**Built so far (2026-11-18):** editor v1 (sidebar, autosave to the place's files, Preview) and
+New map v1 (`new.html`: search, frame ≤ 25 km, name → `/api/new` makes a draft place, pulls
+OSM via Overpass, picks + merges the parks (`scripts/parks.mjs`) → opens in the editor).
+Drafts stay out of the published build. Next: map info (title / subtitle / areas / parks) in
+the editor, style presets (ECTA, Swiss, National Geographic, NPS), curated layer controls +
+raw style override, label everything (trails, peaks, POIs) with toggles, background jobs for
+relief + vegetation, PDF export.
+
+**Size limits:** one GeoJSON per map works up to ~25 km across (Mt. Tam frame: 10 × 12.5 km,
+6,659 features, 7 MB; Overpass took ~8 min on a busy day). Yosemite / Grand Canyon scale
+(50–100+ km) needs tiled data: OSM → vector tiles (PMTiles), and our own Overpass or a
+Geofabrik extract instead of the public servers.
+
 Next places to try the vegetation layer on: **Bolinas Ridge** (Mt. Tam), classic golden grass.
 
 ## Where the data comes from

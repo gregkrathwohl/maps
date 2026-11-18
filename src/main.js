@@ -57,7 +57,10 @@ document.querySelector('.title-panel').classList.add('ready');
 document.querySelector('.key').classList.add('ready');
 
 const names = cfg.boundaries || [cfg.name];
-const boundaries = osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
+// a merged park outline (new maps write data/boundary.geojson), else the named OSM boundaries
+const merged = await optional(`${base}/data/boundary.geojson`);
+const boundaries = merged.features.length ? merged.features
+  : osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
 const mask = outsideMask(boundaries);
 const designZoom = cfg.zoom;
 

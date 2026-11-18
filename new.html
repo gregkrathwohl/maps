@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New map</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="node_modules/maplibre-gl/dist/maplibre-gl.css">
+<link rel="stylesheet" href="src/app.css">
+<script type="importmap">
+{ "imports": { "maplibre-gl": "./node_modules/maplibre-gl/dist/maplibre-gl.mjs" } }
+</script>
+<style>
+  body { background: #f4f5f7; }
+  #map { position: fixed; inset: 0; }
+  /* the frame: everything outside it is dimmed */
+  .frame { position: fixed; z-index: 2; pointer-events: none; border: 2px solid #111827; border-radius: 4px;
+    box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.28); transition: border-color .15s; }
+  .frame.bad { border-color: #b91c1c; }
+  .frame .dims { position: absolute; left: 50%; top: -30px; transform: translateX(-50%); background: #111827; color: #fff;
+    font: 500 12px var(--sans); padding: 3px 9px; border-radius: 6px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .frame.bad .dims { background: #b91c1c; }
+  .card { position: fixed; z-index: 3; top: 12px; right: 12px; width: 320px; background: #fff; color: #111827;
+    border: 1px solid #e6e8eb; border-radius: 12px; box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 8px 24px rgba(16,24,40,.08);
+    font: 13px/1.45 var(--sans); padding: 16px; display: grid; gap: 12px; }
+  .card h1 { font: 600 17px var(--sans); margin: 0; }
+  .card p { margin: 0; color: #6b7280; }
+  .card label { display: grid; gap: 4px; font-weight: 500; }
+  .card input { font: inherit; padding: 7px 10px; border: 1px solid #d1d5db; border-radius: 7px; }
+  .card input:focus-visible, .card button:focus-visible { outline: 2px solid #2563eb; outline-offset: 1px; }
+  .card .row { display: flex; gap: 8px; align-items: center; }
+  .card .row input { flex: 1; min-width: 0; }
+  .results { list-style: none; margin: -6px 0 0; padding: 0; border: 1px solid #e6e8eb; border-radius: 8px; max-height: 180px; overflow: auto; }
+  .results:empty { display: none; }
+  .results li { padding: 6px 10px; cursor: pointer; border-top: 1px solid #f1f2f4; }
+  .results li:first-child { border-top: 0; }
+  .results li:hover { background: #f9fafb; }
+  .results small { color: #6b7280; }
+  .msg { font-size: 12px; color: #6b7280; }
+  .msg.err { color: #b91c1c; }
+  .back { color: #6b7280; text-decoration: none; font-size: 12px; }
+  .back:hover { color: #111827; }
+  @media (max-width: 700px) { .card { left: 12px; right: 12px; width: auto; } }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="frame" id="frame"><span class="dims" id="dims"></span></div>
+<form class="card" id="card" autocomplete="off">
+  <a class="back" href="/library.html">← Map library</a>
+  <h1>New trail map</h1>
+  <p>Find the park, then pan and zoom until the frame covers the area you want on the map.</p>
+  <label>Find a place
+    <span class="row"><input id="q" placeholder="e.g. Point Reyes, Mt. Tamalpais"><button type="button" class="btn" id="go">Search</button></span>
+  </label>
+  <ul class="results" id="results"></ul>
+  <label>Map name <input id="name" placeholder="e.g. Point Reyes" required></label>
+  <button class="btn primary wide" id="create" type="submit">Create map from this area</button>
+  <div class="msg" id="msg"></div>
+</form>
+<script type="module" src="src/new.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "name": "Mount Tamalpais",
+  "title": "Mount Tamalpais",
+  "subtitle": "Trails Guide",
+  "draft": true,
+  "created": "2026-11-18",
+  "bbox": [
+    -122.66696,
+    37.8401,
+    -122.55188,
+    37.95355
+  ],
+  "center": [
+    -122.57929,
+    37.89828
+  ],
+  "zoom": 11.92,
+  "areas": [],
+  "boundaries": [
+    "Mount Tamalpais Watershed",
+    "Mount Tamalpais State Park"
+  ],
+  "defaults": {
+    "mode": "web",
+    "hillshade": true
+  },
+  "org": ""
+}

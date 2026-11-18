@@ -4,6 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { pickParks } from './scripts/parks.mjs';
 
 const root = path.dirname(new URL(import.meta.url).pathname);
 const port = Number(process.env.PORT || 5190);
@@ -81,6 +82,36 @@ http.createServer((req, res) => {
         if (defaults) cfg.defaults = { ...(cfg.defaults || {}), ...defaults };
         fs.writeFileSync(cfgFile, JSON.stringify(cfg, null, 2) + '\n');
         res.writeHead(200, { 'Content-Type': 'application/json' }).end('{}');
+      } catch (e) { res.writeHead(500).end(String(e?.message || e)); }
+    });
+    return;
+  }
+
+  // POST /api/new {name, bbox, center, zoom} — a new draft place: place.json, then OSM via Overpass,
+  // then the park boundaries that fill most of the frame (they drive the grey "outside" wash)
+  if (req.method === 'POST' && url.pathname === '/api/new') {
+    let body = '';
+    req.on('data', c => (body += c));
+    req.on('end', async () => {
+      try {
+        const { name, bbox, center, zoom } = JSON.parse(body || '{}');
+        if (!name || !Array.isArray(bbox) || bbox.length !== 4) throw new Error('name and bbox are required');
+        const slug = name.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').slice(0, 40) || 'map';
+        let id = slug, k = 2;
+        while (fs.existsSync(path.join(root, 'places', id))) id = `${slug}-${k++}`;
+        const dir = path.join(root, 'places', id);
+        fs.mkdirSync(path.join(dir, 'data'), { recursive: true });
+        const cfg = { name, title: name, subtitle: 'Trails Guide', draft: true, created: new Date().toISOString().slice(0, 10),
+          bbox, center, zoom, areas: [], boundaries: [], defaults: { mode: 'web', hillshade: true } };
+        const write = () => fs.writeFileSync(path.join(dir, 'place.json'), JSON.stringify(cfg, null, 2) + '\n');
+        write();
+        fs.writeFileSync(path.join(dir, 'labels.json'), '[]\n');
+        try { await run('node', ['scripts/fetch-osm.mjs', id]); }
+        catch (e) { fs.rmSync(dir, { recursive: true, force: true }); throw e; }
+        cfg.boundaries = pickParks(id);
+        if (cfg.boundaries[0] && cfg.boundaries[0] !== name) cfg.org = cfg.boundaries[0];
+        write();
+        res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ id, boundaries: cfg.boundaries }));
       } catch (e) { res.writeHead(500).end(String(e?.message || e)); }
     });
     return;

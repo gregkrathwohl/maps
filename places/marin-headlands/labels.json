@@ -127,13 +127,14 @@
   "minzoom": 12.5
  },
  {
-  "text": "Gerbode\nValley",
+  "text": "Gerbode Valley",
   "style": "area",
-  "size": 17,
+  "size": 14.5,
   "at": [
-   -122.5125,
-   37.8445
-  ]
+   -122.51345,
+   37.84593
+  ],
+  "rotate": -54
  },
  {
   "text": "Tennessee Valley",

@@ -209,7 +209,9 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
 // World polygon with the place's own boundaries cut out of it.
 export function outsideMask(boundaryFeatures) {
   const parts = boundaryFeatures.flatMap(({ geometry: g }) => (g.type === 'Polygon' ? [g.coordinates] : g.coordinates));
+  if (!parts.length) return { type: 'FeatureCollection', features: [] };   // no park chosen: nothing greyed out
   const world = [[-180, -85], [180, -85], [180, 85], [-180, 85], [-180, -85]];
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {},
-    geometry: { type: 'Polygon', coordinates: [world, ...parts.map(p => p[0])] } }] };
+    // every outer ring becomes a hole in the world; holes inside a park (towns) stay grey
+    geometry: { type: 'MultiPolygon', coordinates: [[world, ...parts.map(p => p[0])], ...parts.flatMap(p => p.slice(1).map(h => [h]))] } }] };
 }

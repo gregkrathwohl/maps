@@ -27,12 +27,13 @@ fs.writeFileSync(path.join(out, 'map.html'), html);
 
 // places: config + the data files the map actually loads
 const KEEP = ['place.json', 'labels.json', 'trips.json', 'routes.json'];
-const DATA = ['osm.geojson', 'relief-grey.png', 'aton.geojson', 'coast.geojson', 'ripples.geojson', 'routes.geojson',
+const DATA = ['osm.geojson', 'boundary.geojson', 'relief-grey.png', 'aton.geojson', 'coast.geojson', 'ripples.geojson', 'routes.geojson',
   'navgrid.png', 'navgrid.json', 'currents-sfbofs.json', 'tides.json'];
 const list = [];
 for (const id of fs.readdirSync('places')) {
   const dir = `places/${id}`;
   if (!fs.existsSync(`${dir}/place.json`)) continue;
+  if (JSON.parse(fs.readFileSync(`${dir}/place.json`, 'utf8')).draft) continue;   // new maps stay local until published
   for (const f of KEEP) if (fs.existsSync(`${dir}/${f}`)) copy(`${dir}/${f}`, `${dir}/${f}`);
   for (const f of DATA) if (fs.existsSync(`${dir}/data/${f}`)) copy(`${dir}/data/${f}`, `${dir}/data/${f}`);
   list.push({ id, ...JSON.parse(fs.readFileSync(`${dir}/place.json`, 'utf8')) });
@@ -42,7 +43,8 @@ fs.writeFileSync(path.join(out, 'places.json'), JSON.stringify(list));
 // library page = home
 const lib = fs.readFileSync('library.html', 'utf8')
   .replace("fetch('/api/places')", "fetch('places.json')")
-  .replace('href="/?place=${p.id}"', 'href="map.html?place=${p.id}"');
+  .replace('href="/?place=${p.id}"', 'href="map.html?place=${p.id}"')
+  .replace(/<a class="new"[^>]*>[^<]*<\/a>/, '');
 fs.writeFileSync(path.join(out, 'index.html'), lib);
 fs.writeFileSync(path.join(out, '.nojekyll'), '');
 

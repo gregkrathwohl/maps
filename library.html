@@ -15,19 +15,22 @@
   a:hover { background: #d1d9ca; }
   b { font: 600 22px "EB Garamond", Georgia, serif; }
   .meta { color: #666; font-size: 13px; }
+  a.new { display: inline-block; margin: 0 0 18px; padding: 8px 14px; outline: 0; border-radius: 0; font-weight: 600; }
+  .draft { font: 600 11px "Source Sans 3", sans-serif; text-transform: uppercase; letter-spacing: .06em; color: #8a6d1f; background: #f6edd2; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
 </style>
 </head>
 <body>
 <main>
   <h1>Map Library</h1>
   <div class="sub">Trail &amp; water guides</div>
+  <a class="new" href="/new.html">+ New map</a>
   <ul id="list"></ul>
 </main>
 <script>
 fetch('/api/places').then(r => r.json()).then(list => {
   document.getElementById('list').innerHTML = list.map(p => `
     <li><a href="/?place=${p.id}">
-      <b>${p.title || p.name}</b> <span class="meta">· ${p.subtitle || ''}</span>
+      <b>${p.title || p.name}</b> <span class="meta">· ${p.subtitle || ''}</span>${p.draft ? '<span class="draft">Draft</span>' : ''}
       <div class="meta">${p.org || ''}${p.areas?.length ? ' · ' + p.areas.join(', ') : ''}</div>
     </a></li>`).join('');
 });
