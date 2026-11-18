@@ -110,7 +110,7 @@ let vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, ''
 let c = PALETTES[prefs.preset] || PALETTES.ecta;
 const SHADE_DEFAULT = { method: 'multidirectional', exaggeration: 0.35, direction: 315, altitude: 45, shadow: '#5d6b5a',
   highlight: '#ffffff', highlightOpacity: 1, accent: '#8a8a7a', land: null, contour: null, contourOpacity: 0.6 };
-const state = { water: { texture: '', depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+const state = { water: { texture: 'bumps', strength: 0.05, bumpSize: 0.45, depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
   contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
@@ -153,7 +153,7 @@ const map = new maplibregl.Map({
 });
 window.__map = map;
 map.on('styleimagemissing', () => {}); // images are added below
-map.on('style.load', () => addImages(map, c, { bumpSize: state.water.bumpSize ?? 1 }));
+map.on('style.load', () => addImages(map, c, { bumpSize: state.water.bumpSize ?? 0.45 }));
 map.addControl(new maplibregl.ScaleControl({ unit: 'imperial', maxWidth: 160 }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors' }));
@@ -352,8 +352,8 @@ $('w-texture').addEventListener('change', (ev) => { setWater({ texture: ev.targe
 // bumpy water: strength (live opacity) and lump size (regenerates the tile in place)
 const syncBumpRows = () => {
   document.querySelectorAll('[data-bumps]').forEach(el => (el.hidden = bay || state.water.texture !== 'bumps'));
-  $('w-strength').value = state.water.strength ?? 0.35; $('w-strength-v').textContent = (+$('w-strength').value).toFixed(2);
-  $('w-bump').value = state.water.bumpSize ?? 1; $('w-bump-v').textContent = (+$('w-bump').value).toFixed(2);
+  $('w-strength').value = state.water.strength ?? 0.05; $('w-strength-v').textContent = (+$('w-strength').value).toFixed(2);
+  $('w-bump').value = state.water.bumpSize ?? 0.45; $('w-bump-v').textContent = (+$('w-bump').value).toFixed(2);
 };
 syncBumpRows();
 let bumpT = 0;

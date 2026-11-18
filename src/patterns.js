@@ -10,7 +10,7 @@ function canvas(w, h, draw) {
   return { width: el.width, height: el.height, data: new Uint8Array(ctx.getImageData(0, 0, el.width, el.height).data.buffer) };
 }
 
-export function addImages(map, c, { bumpSize = 1 } = {}) {
+export function addImages(map, c, { bumpSize = 0.45 } = {}) {
   // salt-marsh tufts: little three-stroke fans, staggered
   map.addImage('marsh', canvas(28, 18, ctx => {
     ctx.strokeStyle = c.marsh; ctx.lineWidth = 0.6; ctx.lineCap = 'round';

@@ -170,7 +170,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       filter: ['<', ['get', 'ele'], 0],
       paint: { 'line-color': '#6f9fc0', 'line-width': W(0.4, ['case', ['>', ['get', 'level'], 0], 1.75, 1]), 'line-opacity': 0.5 } }] : []),
     ...(water.texture ? [{ id: 'water-texture', type: 'fill', source: 'ofm', 'source-layer': 'water',
-      paint: { 'fill-pattern': water.texture === 'bumps' ? 'water-bumps' : 'waves', 'fill-opacity': water.texture === 'bumps' ? (water.strength ?? 0.35) : 0.8 } }] : []),
+      paint: { 'fill-pattern': water.texture === 'bumps' ? 'water-bumps' : 'waves', 'fill-opacity': water.texture === 'bumps' ? (water.strength ?? 0.05) : 0.8 } }] : []),
     { id: 'coastline', type: 'line', source: 'osm',
       filter: ['all', ['==', ['get', 'natural'], 'coastline'], ['==', ['geometry-type'], 'LineString']],
       paint: { 'line-color': c.waterLine, 'line-width': W(0.7) } },
