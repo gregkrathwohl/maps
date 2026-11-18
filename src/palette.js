@@ -28,3 +28,31 @@ export const ipswich = {
   townLabel: '#8d918a',
   title: '#9b2f35',
 };
+
+// National Park Service brochure look (sampled from the NPS Marin Headlands map, rev. 04/22):
+// grey-green park land, neutral grey outside, pale blue water, black trails coded by use,
+// white cased roads, dark red highways, strong grey relief and no contours.
+export const nps = {
+  ...ipswich,
+  paper: '#ececeb',        // land outside the park: neutral light grey
+  openSpace: '#c3cec7',    // park land: grey-green
+  outside: '#f4f4f3',      // a light wash only: the park / non-park fill difference does the work
+  outsideOpacity: 0.35,
+  water: '#e6f1f5',
+  waterLine: '#8fb9cc',
+  waterLabel: '#4b86ad',
+  stream: '#8fb9cc',
+  trail: '#1b1b1b',
+  road: '#2b2b2b',         // road casing
+  roadFill: '#ffffff',
+  highway: '#9a3b2e',
+  street: '#2b2b2b',
+  service: '#6b6b6b',
+  building: '#b5b5b2',
+  boundary: '#6b766f',
+  ink: '#1b1b1b',
+  inkSoft: '#5f5f5f',
+  peak: '#6b6b6b',
+};
+export const PALETTES = { ecta: ipswich, nps };
+export const PRESETS = [['ecta', 'ECTA trails guide'], ['nps', 'National Park']];

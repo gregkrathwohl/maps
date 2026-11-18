@@ -114,6 +114,26 @@ tile infrastructure needed: one park at a time.
 
 Next places to try the vegetation layer on: **Bolinas Ridge** (Mt. Tam), classic golden grass.
 
+## Label + editing ideas (Greg, 2026-11-18)
+
+- **Model for now:** two owners. MapLibre places a name automatically until you click it; then
+  it's a pinned hand label you own (drag, size, rotate, style). Deleting it hands it back.
+- **Per-feature overrides (maybe later):** keyed by OSM id (rename / hide / priority via
+  `symbol-sort-key`) while MapLibre keeps placing them. Fixes "taking over one road label hides
+  every copy". A third state to explain, so only if the two-owner model starts to chafe.
+- **Freeze labels (print style):** one button pins everything MapLibre is showing at the current
+  zoom, exactly where it put it, then you hand-fix the draft like a print cartographer. Must use
+  MapLibre's own placement (internal symbol buckets / placement index: anchors, glyph angles,
+  collision results), *not* our own re-placement, or labels jump the moment you freeze. Isolate
+  the internals in one file (unsupported API). Points are exact via the public API already;
+  curved line labels need our own text-on-path rendering (SVG textPath), also wanted for
+  curved valley / creek names.
+- **AI editing:** a prompt box next to the hand controls ("make the trails thinner and darker
+  green", "hide building outlines below z14") that edits the underlying style / settings
+  directly, including things the editor doesn't expose.
+- **Style presets:** ECTA first, then National Park (the NPS cartographic look, no gimmicks),
+  Swiss, National Geographic… each built by studying real maps and listing their design patterns.
+
 ## Where the data comes from
 
 | Layer | Source | How it gets in |

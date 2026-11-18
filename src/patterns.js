@@ -37,6 +37,12 @@ export function addImages(map, c) {
     ctx.restore();
   }), { pixelRatio: R });
 
+  // peak: open triangle (NPS style)
+  if (!map.hasImage('peak-tri')) map.addImage('peak-tri', canvas(24, 22, ctx => {
+    ctx.strokeStyle = '#4a4a4a'; ctx.lineWidth = 1.6; ctx.lineJoin = 'round';
+    ctx.beginPath(); ctx.moveTo(12, 3); ctx.lineTo(21, 19); ctx.lineTo(3, 19); ctx.closePath(); ctx.stroke();
+  }), { pixelRatio: R });
+
   // trailhead parking: black rounded square, white P
   map.addImage('parking', canvas(36, 36, ctx => {
     ctx.fillStyle = '#111';

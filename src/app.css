@@ -283,3 +283,22 @@ body.ed-float.editor-open .maplibregl-ctrl-bottom-right { right: calc(var(--ed-c
 .editor .field .tip-body { color: #e5e7eb; font-size: 12px; }
 .editor .field .tip { color: #9ca3af; }
 .editor .field .tip:hover { color: var(--ed-ink); }
+
+/* ---------- National Park preset: black title band, plain sans panels ---------- */
+body.preset-nps .title-panel { background: #111; color: #fff; border: 0; outline: 0; padding: 14px 18px 12px; }
+body.preset-nps .title-panel .org { font: 600 12px var(--sans); color: #d6d6d6; text-align: left; letter-spacing: .02em; }
+body.preset-nps .title-panel h1 { font: 700 30px/1.05 var(--sans); text-transform: none; letter-spacing: 0; text-align: left; margin: 6px 0 2px; }
+body.preset-nps .title-panel h1 span { display: inline !important; }
+body.preset-nps .title-panel h1 span:not(:last-child)::after { content: " "; }
+body.preset-nps .title-panel .subtitle { font: 400 16px var(--sans); color: #d6d6d6; text-transform: none; letter-spacing: 0; text-align: left; border-bottom-color: #444; }
+body.preset-nps .areas { color: #e6e6e6; }
+body.preset-nps .key { border: 1px solid #9a9a9a; outline: 0; background: rgba(255,255,255,.96); }
+body.preset-nps .hand-label:not(.locator) { font-family: var(--sans) !important; font-style: normal !important; }
+.sw.nps-t::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); border-top: 2px solid #1b1b1b; }
+.sw.nps-t.bike::after { border-top-style: dashed; }
+.sw.nps-t.foot::after { border-top-style: dotted; }
+.sw.nps-t.horse::after { border: 0; height: 2px; background: repeating-linear-gradient(90deg, #1b1b1b 0 7px, transparent 7px 9px, #1b1b1b 9px 11px, transparent 11px 13px); }
+.sw.nps-road { height: 6px; margin: 3px 0; border: 1.5px solid #2b2b2b; background: #fff; }
+.sw.nps-hwy { height: 6px; margin: 3px 0; border: 1.5px solid #2b2b2b; background: #9a3b2e; }
+.sw.nps-park { background: #c3cec7; }
+.sw.nps-peak::after { content: "△"; position: absolute; left: 9px; top: -3px; font-size: 13px; color: #4a4a4a; }

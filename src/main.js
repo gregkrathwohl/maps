@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
-import { ipswich as c } from './palette.js';
+import { PALETTES, PRESETS } from './palette.js';
 import { buildStyle, outsideMask, vegOpacity } from './style.js';
 import { buildBayStyle } from './bay-style.js';
 import { addImages } from './patterns.js';
@@ -89,7 +89,7 @@ const PREVIEW = new URLSearchParams(location.search).has('preview');
 if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
 const EDITOR = !PUBLIC;
-const SAVED_KEYS = ['mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const SAVED_KEYS = ['preset', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
 const $ = (id) => document.getElementById(id);
 const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
@@ -107,10 +107,11 @@ const savePrefs = (patch) => {
 const vegIndex = cfg.vegetation?.index
   ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
 const vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
-const state = { mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+let c = PALETTES[prefs.preset] || PALETTES.ecta;
+const state = { preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg || 'off',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
-  contours: (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')) || !vegIndex,
+  contours: (prefs.contours ?? !(prefs.veg && prefs.veg !== 'off')) || (!vegIndex && !!prefs.veg && prefs.veg !== 'off'),
   vegOpacity: prefs.vegOpacity ?? 1, vegFade: prefs.vegFade ?? 0 };
 // Blender relief: the grey render, turned into shadows + highlights in a canvas pinned to the
 // bbox corners (NW, NE, SE, SW). The look is tunable live and autosaved to place.json.
@@ -130,7 +131,7 @@ let handNames = handNamesOf();
 const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
-  relief, blender: state.blender, handNames, contours: state.contours,
+  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset,
   veg: vegIndex && state.veg !== 'off' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
 // the editor sidebar is open by default in dev; collapsing it is a per-browser convenience
@@ -169,6 +170,25 @@ const setFloat = (on) => { document.body.classList.toggle('ed-float', on); try {
 setFloat((() => { try { return !!localStorage.getItem(floatKey); } catch { return false; } })());
 $('ed-float').addEventListener('click', () => setFloat(!document.body.classList.contains('ed-float')));
 $('ed-open').addEventListener('click', () => setCollapsed(false));
+// legend + panels follow the style preset (bay maps keep their own key)
+const ectaKey = document.querySelector('.key').innerHTML;
+const npsKey = `
+  <div class="k"><i class="sw nps-t solid"></i>Hiking, horses, bikes</div>
+  <div class="k"><i class="sw nps-t horse"></i>Hiking and horses</div>
+  <div class="k"><i class="sw nps-t bike"></i>Hiking and bikes</div>
+  <div class="k"><i class="sw nps-t foot"></i>Hiking only</div>
+  <div class="k"><i class="sw nps-road"></i>Road</div>
+  <div class="k"><i class="sw nps-hwy"></i>Highway</div>
+  <div class="k"><i class="sw fill nps-park"></i>Park land</div>
+  <div class="k"><i class="sw contour"></i>Contour, 20 ft</div>
+  <div class="k"><i class="sw p">P</i>Parking</div>
+  <div class="k"><i class="sw nps-peak"></i>Peak, elevation in feet</div>
+  <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after National Park Service maps (Harpers Ferry Center).</p>`;
+const applyPreset = () => {
+  document.body.classList.toggle('preset-nps', state.preset === 'nps');
+  if (!bay) document.querySelector('.key').innerHTML = state.preset === 'nps' ? npsKey : ectaKey;
+};
+applyPreset();
 const syncKey = () => { const k = document.querySelector('.key .sw.contour')?.closest('.k'); if (k) k.hidden = !state.contours; };
 const restyle = () => { syncKey(); map.setStyle(style(), { diff: false }); };
 syncKey();
@@ -257,6 +277,16 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
   restyle();
   layer.setMode(state.mode);
 }));
+$('preset').innerHTML = PRESETS.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
+$('preset').value = state.preset;
+$('preset').closest('label').hidden = bay;
+$('preset').addEventListener('change', (ev) => {
+  state.preset = ev.target.value; c = PALETTES[state.preset];
+  // NPS maps show relief, not contours
+  state.contours = state.preset !== 'nps' && !(vegIndex && state.veg !== 'off'); $('contours').checked = state.contours;
+  savePrefs({ preset: state.preset, contours: state.contours });
+  applyPreset(); restyle();
+});
 $('blender').closest('label').hidden = !relief;
 $('veg-sec').hidden = !vegIndex;
 $('contours').checked = state.contours;

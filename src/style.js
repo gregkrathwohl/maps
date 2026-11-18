@@ -13,7 +13,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, handNames = [] }) {
+export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -190,6 +190,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
         'icon-allow-overlap': false, 'icon-padding': 24, 'symbol-sort-key': ['-', 0, ['to-number', ['get', 'capacity'], 0]] } },
   ];
 
+  if (preset === 'nps') npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, notHand });
   for (const l of layers) if (l.id.startsWith('contour')) l.layout = { ...(l.layout || {}), visibility: contours ? 'visible' : 'none' };
   return {
     version: 8,
@@ -217,4 +218,55 @@ export function outsideMask(boundaryFeatures) {
   return { type: 'FeatureCollection', features: [{ type: 'Feature', properties: {},
     // every outer ring becomes a hole in the world; holes inside a park (towns) stay grey
     geometry: { type: 'MultiPolygon', coordinates: [[world, ...parts.map(p => p[0])], ...parts.flatMap(p => p.slice(1).map(h => [h]))] } }] };
+}
+
+// National Park preset: same data, NPS brochure conventions. Rewrites the ECTA layer list in place.
+function npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, notHand }) {
+  const at = (id) => layers.findIndex(l => l.id === id);
+  const replace = (id, ...nl) => { const i = at(id); if (i >= 0) layers.splice(i, 1, ...nl); };
+  const set = (id, fn) => { const l = layers[at(id)]; if (l) fn(l); };
+
+  // strong grey relief, the main texture of an NPS map
+  set('hillshade', l => Object.assign(l.paint, { 'hillshade-exaggeration': 0.42, 'hillshade-shadow-color': '#59615c',
+    'hillshade-highlight-color': 'rgba(255,255,255,0.55)', 'hillshade-accent-color': '#7c837f' }));
+  set('boundary', l => Object.assign(l.paint, { 'line-color': c.boundary, 'line-width': W(0.8), 'line-dasharray': [1, 0] }));
+
+  // trails: black, the dash says who may use it
+  const yes = (k) => ['match', ['coalesce', ['get', k], ''], ['yes', 'designated', 'permissive'], true, false];
+  const bikes = ['any', yes('bicycle'), ['all', hw('track'), ['!=', ['get', 'bicycle'], 'no']], carFree];
+  const horses = ['any', yes('horse'), hw('bridleway')];
+  const base = ['all', trailFilter, ['!', informal]];
+  const trail = (id, filter, dash) => ({ id, type: 'line', source: 'osm', minzoom: minz(11), filter: ['all', base, filter],
+    layout: { 'line-join': 'round', 'line-cap': dash ? 'butt' : 'round' },
+    paint: { 'line-color': c.trail, 'line-width': W(1.7), ...(dash ? { 'line-dasharray': dash } : {}) } });
+  replace('trail',
+    trail('trail', ['all', bikes, horses], null),                       // hiking, horses, bikes
+    trail('trail-horse', ['all', horses, ['!', bikes]], [4, 1.5, 1, 1.5]),  // hiking and horses
+    trail('trail-bike', ['all', bikes, ['!', horses]], [3, 2]),          // hiking and bikes
+    trail('trail-foot', ['all', ['!', bikes], ['!', horses]], [0.6, 1.4]));  // hiking only
+  set('trail-informal', l => Object.assign(l.paint, { 'line-color': '#8a8a8a', 'line-width': W(0.9), 'line-dasharray': [0.6, 1.6] }));
+
+  // roads: white with a dark edge; highways dark red
+  const road = (id, filter, w) => [
+    { id: `${id}-casing`, type: 'line', source: 'osm', filter, layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': c.road, 'line-width': W(w + 1.1) } },
+    { id, type: 'line', source: 'osm', filter, layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': c.roadFill, 'line-width': W(w) } }];
+  replace('road-street', ...road('road-street', ['all', hw('residential', 'unclassified', 'living_street', 'tertiary'), ['!', carFree]], 1.1));
+  replace('road-main', ...road('road-main', hw('primary', 'secondary', 'primary_link', 'secondary_link'), 1.6));
+  set('road-highway-casing', l => Object.assign(l.paint, { 'line-color': c.road, 'line-width': W(3.2) }));
+  set('road-highway', l => Object.assign(l.paint, { 'line-color': c.highway, 'line-width': W(2.2) }));
+
+  // labels: plain sans, black; peaks get an open triangle and their height in feet
+  set('trail-label', l => { l.layout['text-font'] = ['Noto Sans Regular']; Object.assign(l.paint, { 'text-color': c.ink, 'text-halo-color': 'rgba(236,236,235,0.8)' }); });
+  set('peak-label', l => {
+    const feet = ['concat', ['to-string', ['round', ['*', ['to-number', ['get', 'ele'], 0], 3.28084]]], '\u2032'];
+    Object.assign(l.layout, { 'icon-image': 'peak-tri', 'icon-size': T(0.5), 'text-anchor': 'top', 'text-offset': [0, 0.6],
+      'text-field': ['case', ['has', 'ele'],
+        ['format', ['get', 'name'], {}, '\n', {}, feet, { 'font-scale': 0.85, 'text-color': c.peak }],
+        ['get', 'name']] });
+    l.paint = { 'text-color': c.ink, 'text-halo-color': 'rgba(236,236,235,0.7)', 'text-halo-width': 1 };
+  });
+  set('battery-label', l => { l.paint['text-halo-color'] = 'rgba(236,236,235,0.7)'; });
+  set('contour-label', l => { l.paint['text-halo-color'] = c.openSpace; });
 }

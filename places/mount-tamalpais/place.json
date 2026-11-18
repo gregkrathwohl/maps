@@ -20,11 +20,12 @@
   "defaults": {
     "mode": "web",
     "hillshade": true,
-    "contours": true,
+    "contours": false,
     "waterMode": "ripples",
     "waterShade": 0,
     "currents": true,
-    "colour": false
+    "colour": false,
+    "preset": "nps"
   },
   "org": "",
   "extent": "bbox"
