@@ -61,5 +61,11 @@ export const vegStyle = {
   road: '#3a3a3a', roadFill: '#fbfaf6', highway: '#fbfaf6',
   boundary: '#3a3a3a', outside: '#e4e3dc', outsideOpacity: 0.7,
 };
+// towns pushed back: light grey streets, a faint grey on built-up land, open space a touch stronger
+export const MUTED_TOWNS = {
+  road: '#77746d', street: '#bdbab2', service: '#d6d3cb', building: '#dedbd3',
+  developed: '#f0efea', openSpace: '#cbd6c3',
+};
+
 export const PALETTES = { ecta: ipswich, nps, veg: vegStyle };
 export const PRESETS = [['ecta', 'ECTA trails guide'], ['nps', 'National Park'], ['veg', 'Vegetation (painted)']];

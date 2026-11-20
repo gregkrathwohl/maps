@@ -8,7 +8,7 @@ const $ = (id) => document.getElementById(id);
 
 const map = new maplibregl.Map({
   container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
-  center: [-122.53, 37.85], zoom: 11.5, hash: true, attributionControl: { compact: true },
+  center: [-122.53, 37.85], zoom: 11.5, attributionControl: { compact: true },
 });
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
 

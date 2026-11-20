@@ -28,6 +28,7 @@
 <aside class="key">
   <div class="k"><i class="sw trail"></i>Trail / fire road</div>
   <div class="k"><i class="sw trail dashed"></i>Informal / closed trail</div>
+  <div class="k" id="k-access" hidden><i class="sw trail faded"></i>Trail crossing private land</div>
   <div class="k"><i class="sw road"></i>Road</div>
   <div class="k"><i class="sw street"></i>Park road</div>
   <div class="k"><i class="sw fill os"></i>Park land</div>
@@ -74,6 +75,7 @@
     <section class="ed-sec">
       <h3>Terrain</h3>
       <label class="tg">Hillshade <input type="checkbox" id="hillshade" role="switch"></label>
+      <label class="tg" title="Paper mode: blank white paper beyond the page edge">Print border <input type="checkbox" id="print-border" role="switch"></label>
       <details class="ed-more" id="shade-adv">
         <summary>Advanced hillshade</summary>
         <label class="field row">Look <select id="sh-preset">

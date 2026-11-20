@@ -24,6 +24,18 @@ html, body { margin: 0; height: 100%; background: var(--paper); color: var(--ink
 .sw.trail::after, .sw.road::after, .sw.street::after, .sw.contour::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); }
 .sw.trail::after { border-top: 2.5px solid #b8414a; }
 .sw.trail.dashed::after { border-top-style: dashed; }
+.sw.trail.faded::after { border-top-color: #e3b6b8; }
+/* place.json "panels": "bottom-left": title stacked on the legend in one corner (a big region's open water) */
+body.panels-bl .title-panel { top: auto; }
+/* paper mode: placed by transform from the map's corner (see placePanels in main.js) */
+body.panels-paper .title-panel, body.panels-paper .key { top: 0; left: 0; bottom: auto !important; transform-origin: 0 0; }
+/* on the print the title block is wider and the legend runs in two columns, so the pair fills a corner of sea */
+body.panels-paper .title-panel, body.panels-paper .key { width: 440px; box-sizing: border-box; }
+body.panels-paper .title-panel h1 { font-size: 52px; }
+body.panels-paper .title-panel .subtitle { font-size: 30px; }
+body.panels-paper .key { columns: 2; column-gap: 18px; }
+body.panels-paper .key .k { break-inside: avoid; }
+body.panels-paper .key .src { column-span: all; }
 .sw.road::after { border-top: 2.5px solid #2b2b2b; }
 .sw.street::after { border-top: 1.5px solid #5c5c5c; }
 .sw.contour::after { border-top: 1px solid #c9ab84; }
@@ -309,3 +321,5 @@ body.preset-nps .hand-label:not(.locator) { font-family: var(--sans) !important;
 body.preset-veg .sw.trail::after { border-top-color: #2d221c; box-shadow: 0 0 0 1.5px #fbf6ea; }
 .ed-back { color: var(--ed-muted); text-decoration: none; }
 .ed-back:hover { color: var(--ed-ink); text-decoration: underline; }
+
+.k[hidden] { display: none; }

@@ -13,7 +13,7 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, water = {}, handNames = [] }) {
+export function buildStyle({ access = null, printBorder = false, ripples = null, c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, water = {}, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -62,7 +62,7 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       filter: ['any',
         ['match', ['coalesce', ['get', 'landuse'], ''], ['residential', 'commercial', 'industrial', 'retail', 'military', 'construction'], true, false],
         ['==', ['get', 'amenity'], 'parking']],
-      paint: { 'fill-color': c.paper } },
+      paint: { 'fill-color': c.developed || c.paper } },
 
     // painterly vegetation (scripts/vegetation.py): image tiles clipped to parks, under the relief
     ...(veg ? veg.tiles.map(t => ({ id: `veg-${t.row}-${t.col}`, type: 'raster', source: `veg-${t.row}-${t.col}`,
@@ -149,6 +149,11 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
     { id: 'trail-informal', type: 'line', source: 'osm', minzoom: minz(13),
       filter: ['all', trailFilter, informal],
       paint: { 'line-color': c.trail, 'line-width': W(1.2), 'line-dasharray': [2.5, 1.5] } },
+    // trail stretches on private or closed land (scripts/trail-access.py): a quiet fade laid over the trail,
+    // so it reads as 'not really ours' when you look for it, without shouting 'do not enter'
+    ...(access ? [{ id: 'trail-access', type: 'line', source: 'access',
+      layout: { 'line-cap': 'butt' },
+      paint: { 'line-color': c.paper, 'line-width': W(1.6), 'line-opacity': ['match', ['get', 'access'], 'closed', 0.72, 0.58] } }] : []),
 
     // neighbouring land: one translucent wash, exactly like the guide's grey-out
     { id: 'outside', type: 'fill', source: 'mask', paint: { 'fill-color': c.outside, 'fill-opacity': c.outsideOpacity } },
@@ -171,9 +176,26 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       paint: { 'line-color': '#6f9fc0', 'line-width': W(0.4, ['case', ['>', ['get', 'level'], 0], 1.75, 1]), 'line-opacity': 0.5 } }] : []),
     ...(water.texture ? [{ id: 'water-texture', type: 'fill', source: 'ofm', 'source-layer': 'water',
       paint: { 'fill-pattern': water.texture === 'bumps' ? 'water-bumps' : 'waves', 'fill-opacity': water.texture === 'bumps' ? (water.strength ?? 0.05) : 0.8 } }] : []),
+    // shore ripples (scripts/coast.mjs + water.mjs): a few quiet lines that follow the coast out to sea,
+    // texture for the water without a full set of depth lines
+    ...(ripples?.features?.length ? [{ id: 'ripple', type: 'line', source: 'ripples',
+      layout: { 'line-join': 'round' },
+      paint: { 'line-color': c.waterLine, 'line-width': W(0.55), 'line-opacity': 0.4 } }] : []),
     { id: 'coastline', type: 'line', source: 'osm',
       filter: ['all', ['==', ['get', 'natural'], 'coastline'], ['==', ['geometry-type'], 'LineString']],
       paint: { 'line-color': c.waterLine, 'line-width': W(0.7) } },
+    // bridges over water sit above it (the water layer otherwise hides them); the Golden Gate in its own orange
+    { id: 'bridge', type: 'line', source: 'osm',
+      filter: ['all', ['==', ['get', 'bridge'], 'yes'], hw('motorway', 'trunk', 'primary', 'secondary', 'motorway_link', 'trunk_link')],
+      layout: { 'line-cap': 'butt' },
+      paint: { 'line-color': ['case', ['==', ['get', 'name'], 'Golden Gate Bridge'], '#c0362c', c.road], 'line-width': W(2.6) } },
+    // paper mode is a print: the page edge runs all the way round, out over the water too, and with
+    // "Print border" on everything beyond it is (nearly) blank paper, the way the sheet would come off the printer
+    ...(paper ? [
+      { id: 'print-border', type: 'fill', source: 'mask', layout: { visibility: printBorder ? 'visible' : 'none' },
+        paint: { 'fill-color': '#ffffff', 'fill-opacity': 0.82 } },   // nearly blank: a ghost of the land beyond
+      { id: 'page-edge', type: 'line', source: 'mask', paint: { 'line-color': c.boundary, 'line-width': 1, 'line-opacity': 0.7 } },
+    ] : []),
     // OSM-driven labels (hand-placed labels live in HTML on top)
     { id: 'trail-label', type: 'symbol', source: 'osm', minzoom: minz(14),
       filter: ['all', trailFilter, ['has', 'name'], notHand],
@@ -193,7 +215,25 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
       filter: ['all', ['==', ['get', 'natural'], 'peak'], ['has', 'name'], notHand],
       layout: { 'text-field': ['get', 'name'], 'text-font': FONT.regular, 'text-size': T(11), 'text-max-width': 5 },
       paint: { 'text-color': c.ink } },
-    { id: 'parking', type: 'symbol', source: 'osm', minzoom: minz(13),
+    // towns from OSM (hand labels of the same name win). Paper mode prints them at a fixed size like
+    // everything else (a city ~80 px at the design zoom, so still legible across the whole region); web mode
+    // keeps them a readable screen size. City > town > village.
+    { id: 'town-label', type: 'symbol', source: 'osm',
+      filter: ['all', ['==', ['geometry-type'], 'Point'], ['has', 'name'], notHand,
+        ['any', ['match', ['coalesce', ['get', 'place'], ''], ['city', 'town', 'village'], true, false],
+          ['all', ['==', ['get', 'place'], 'hamlet'], ['>=', ['zoom'], 13.5]]]],
+      layout: { 'text-field': ['upcase', ['get', 'name']], 'text-font': FONT.regular, 'text-letter-spacing': 0.18,
+        'text-size': paper
+          ? ['interpolate', ['exponential', 2], ['zoom'], designZoom - 6, ['/', ['match', ['get', 'place'], 'city', 84, 'town', 60, 44], 64],
+            designZoom + 1.5, ['*', ['match', ['get', 'place'], 'city', 84, 'town', 60, 44], 2.828]]   // (MapLibre caps text at 255 px)
+          : ['interpolate', ['linear'], ['zoom'], 10, ['match', ['get', 'place'], 'city', 12, 'town', 11, 9.5],
+            14, ['match', ['get', 'place'], 'city', 16, 'town', 14, 12]],
+        'text-max-width': 8, 'text-padding': 6, 'text-allow-overlap': paper, 'text-ignore-placement': paper,
+        'symbol-sort-key': ['match', ['get', 'place'], 'city', 0, 'town', 1, 2] },
+      paint: { 'text-color': paper ? c.ink : c.townLabel, 'text-opacity': paper ? 0.78 : 1,
+        'text-halo-color': c.paper, 'text-halo-width': paper ? 1.2 : 1.6 } },
+    // parking only once you're close: zoomed out, hundreds of lots speckle the towns
+    { id: 'parking', type: 'symbol', source: 'osm', minzoom: 13,
       filter: ['all', ['==', ['get', 'amenity'], 'parking'], ['!=', ['get', 'access'], 'private'],
         ['!', ['match', ['coalesce', ['get', 'parking'], ''], ['street_side', 'lane', 'garage', 'carports'], true, false]]],
       layout: { 'icon-image': 'parking', 'icon-size': paper ? T(0.5) : ['interpolate', ['linear'], ['zoom'], 13, 0.4, 16, 0.6],
@@ -209,6 +249,8 @@ export function buildStyle({ c, osm, mask, contourTiles, mode = 'web', designZoo
     glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
     sources: {
       osm: { type: 'geojson', data: osm, maxzoom: 18, tolerance: 0.25 },
+      ...(ripples?.features?.length ? { ripples: { type: 'geojson', data: ripples, tolerance: 0.4 } } : {}),
+      ...(access ? { access: { type: 'geojson', data: access, maxzoom: 18, tolerance: 0.25 } } : {}),
       mask: { type: 'geojson', data: mask },
       ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],

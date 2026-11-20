@@ -1,6 +1,6 @@
 import * as maplibregl from 'maplibre-gl';
 import mlcontour from 'maplibre-contour';
-import { PALETTES, PRESETS } from './palette.js';
+import { PALETTES, PRESETS, MUTED_TOWNS } from './palette.js';
 import { buildStyle, outsideMask, vegOpacity, SHADE_PRESETS, shadePaint } from './style.js';
 import { buildBayStyle } from './bay-style.js';
 import { addImages, waterBumps } from './patterns.js';
@@ -16,7 +16,7 @@ const base = `places/${place}`;
 
 const empty = { type: 'FeatureCollection', features: [] };
 const optional = (url) => fetch(url).then(r => (r.ok ? r.json() : empty)).catch(() => empty);
-const [cfg, osm, labels, currents, routes, aton, coastLines, ripples, trips] = await Promise.all([
+const [cfg, osm, labels, currents, routes, aton, coastLines, ripples, trips, cpad, trailAccess] = await Promise.all([
   fetch(`${base}/place.json`).then(r => r.json()),
   fetch(`${base}/data/osm.geojson`).then(r => r.json()),
   fetch(`${base}/labels.json`).then(r => (r.ok ? r.json() : [])),
@@ -26,7 +26,15 @@ const [cfg, osm, labels, currents, routes, aton, coastLines, ripples, trips] = a
   optional(`${base}/data/coast.geojson`),
   optional(`${base}/data/ripples.geojson`),
   fetch(`${base}/trips.json`).then(r => (r.ok ? r.json() : [])).catch(() => []),
+  optional(`${base}/data/cpad.geojson`),
+  optional(`${base}/data/trail-access.geojson`),
 ]);
+// place.json "townNames": places OSM files as hamlets that the map should still name when zoomed out (Bolinas)
+for (const f of osm.features) if (f.properties.place === 'hamlet' && cfg.townNames?.includes(f.properties.name)) f.properties.place = 'village';
+// public land from CPAD (scripts/fetch-cpad.mjs) fills OSM's gaps: open and restricted-access holdings join the
+// open space (unnamed here, so they never add park labels; `access` is kept for styling)
+for (const f of cpad.features) if (f.geometry && f.properties.access !== 'No Public Access')
+  osm.features.push({ type: 'Feature', geometry: f.geometry, properties: { boundary: 'protected_area', cpad: 1, access: f.properties.access, unit: f.properties.unit } });
 const bay = cfg.style === 'bay';
 if (bay) document.querySelector('.key').innerHTML = `
   <div class="k"><i class="sw kayak"></i>Launch / landing</div>
@@ -65,7 +73,8 @@ const boundaries = cfg.extent === 'bbox' ? [rect(cfg.bbox)]
   : merged.features.length ? merged.features
   : osm.features.filter(f => f.properties.boundary && names.includes(f.properties.name));
 const mask = outsideMask(boundaries);
-const designZoom = cfg.zoom;
+// paper mode's native scale (lines are 'printed' at this zoom); falls back to the opening zoom
+const designZoom = cfg.designZoom ?? cfg.zoom;
 
 // Contours in feet, generated in a worker from Terrarium DEM tiles.
 const demSource = new mlcontour.DemSource({
@@ -89,7 +98,7 @@ const PREVIEW = new URLSearchParams(location.search).has('preview');
 if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
 const EDITOR = !PUBLIC;
-const SAVED_KEYS = ['preset', 'shade', 'water', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const SAVED_KEYS = ['printBorder', 'preset', 'shade', 'water', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
 const $ = (id) => document.getElementById(id);
 const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
@@ -107,10 +116,12 @@ const savePrefs = (patch) => {
 let vegIndex = cfg.vegetation?.index
   ? await fetch(`${base}/${cfg.vegetation.index}`).then(r => (r.ok ? r.json() : null)).catch(() => null) : null;
 let vegBase = vegIndex && `${base}/${cfg.vegetation.index.replace(/\/[^/]*$/, '')}`;
-let c = PALETTES[prefs.preset] || PALETTES.ecta;
+// big regions (place.json "towns": "muted"): streets and town land recede so the open space carries the map
+const palette = (k) => ({ ...(PALETTES[k] || PALETTES.ecta), ...(cfg.towns === 'muted' ? MUTED_TOWNS : {}) });
+let c = palette(prefs.preset);
 const SHADE_DEFAULT = { method: 'multidirectional', exaggeration: 0.35, direction: 315, altitude: 45, shadow: '#5d6b5a',
   highlight: '#ffffff', highlightOpacity: 1, accent: '#8a8a7a', land: null, contour: null, contourOpacity: 0.6 };
-const state = { water: { texture: 'bumps', strength: 0.05, bumpSize: 0.45, depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+const state = { printBorder: !!prefs.printBorder, water: { texture: 'bumps', strength: 0.05, bumpSize: 0.45, depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
   contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
@@ -127,30 +138,70 @@ if (cfg.relief) {
 }
 document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x.dataset.mode === state.mode));
 $('hillshade').checked = state.hillshade;
+$('print-border').checked = state.printBorder;
+$('print-border').addEventListener('change', (ev) => {
+  state.printBorder = ev.target.checked; savePrefs({ printBorder: state.printBorder });
+  if (map.getLayer('print-border')) map.setLayoutProperty('print-border', 'visibility', state.printBorder ? 'visible' : 'none');
+});
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
 const handNamesOf = () => labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
 let handNames = handNamesOf();
-const style = () => (bay ? buildBayStyle : buildStyle)({ c: bay ? undefined : c, osm, mask, currents, routes, aton, coastLines,
+const style = () => (bay ? buildBayStyle : buildStyle)({ printBorder: state.printBorder, c: bay ? undefined : c, osm, access: trailAccess.features.length ? trailAccess : null, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
   relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset, shade: state.shade, water: state.water,
   // the painterly vegetation is its own map style (it clashes with ECTA's red trails)
   veg: vegIndex && state.preset === 'veg' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
-// the editor sidebar is open by default in dev; collapsing it is a per-browser convenience
-const edKey = 'trail-cartography:editor-collapsed';
+// nothing is remembered by the browser: every reload is the map's own defaults (the editor open, docked)
 const setCollapsed = (on) => {
   document.body.classList.toggle('editor-open', EDITOR && !on);
-  try { localStorage.setItem(edKey, on ? '1' : ''); } catch {}
   window.__map?.resize();
 };
-if (EDITOR) setCollapsed((() => { try { return !!localStorage.getItem(edKey); } catch { return false; } })());
+if (EDITOR) setCollapsed(false);
 
 const [w, s, e, n] = cfg.bbox;
 const map = new maplibregl.Map({
-  container: 'map', style: style(), center: cfg.center, zoom: designZoom,
-  maxBounds: [[w - 0.08, s - 0.05], [e + 0.08, n + 0.05]], attributionControl: false, hash: true,
+  container: 'map', style: style(), center: cfg.center, zoom: cfg.zoom ?? designZoom,
+  // big regions: a little room to pan past the frame, no more (place.json "margin", degrees)
+  maxBounds: cfg.margin != null ? [[w - cfg.margin, s - cfg.margin * 0.7], [e + cfg.margin, n + cfg.margin * 0.7]]
+    : [[w - 0.08, s - 0.05], [e + 0.08, n + 0.05]], attributionControl: false,
 });
+// a #zoom/lat/lng in a link opens there once, then leaves the address, so a reload is the fresh default view
+const at = /^#([\d.]+)\/(-?[\d.]+)\/(-?[\d.]+)/.exec(location.hash);
+if (at) { map.jumpTo({ zoom: +at[1], center: [+at[3], +at[2]] }); history.replaceState(null, '', location.pathname + location.search); }
+// with a margin set, you can't zoom out much past the whole frame either; a fresh visit opens on the frame
+if (cfg.margin != null) {
+  const fit = () => map.cameraForBounds(cfg.bbox, { padding: 20 })?.zoom;
+  const lock = () => { const z = fit(); if (z != null) map.setMinZoom(z - 0.4); };
+  lock(); map.on('resize', lock);
+  if (!at) map.jumpTo(map.cameraForBounds(cfg.bbox, { padding: 20 }));
+}
+// title and legend stacked in the bottom-left corner
+if (cfg.panels === 'bottom-left') {
+  document.body.classList.add('panels-bl');
+  const stack = () => { document.querySelector('.title-panel').style.bottom = `${document.querySelector('.key').offsetHeight + 34 + 16}px`; };
+  stack(); addEventListener('resize', stack);
+}
+if (trailAccess.features.length) document.getElementById('k-access').hidden = false;
+
+// Paper mode on a map with a print layout (place.json "panelBox": [west, south, east, north], a stretch of open
+// water inset from the page's corner): the title and legend are part of the print, stacked title over legend and
+// scaled to fill that box - a fixed size on the ground, so they zoom with the map like everything else on the
+// sheet. Other maps, and web mode, keep them fixed on the screen.
+const titleEl = document.querySelector('.title-panel'), keyEl = document.querySelector('.key');
+const placePanels = () => {
+  const paper = state.mode === 'paper' && !!cfg.panelBox;   // only maps with a print layout
+  document.body.classList.toggle('panels-paper', paper);
+  if (!paper) { for (const el of [titleEl, keyEl]) el.style.transform = ''; return; }
+  const W0 = Math.max(titleEl.offsetWidth, keyEl.offsetWidth), th = titleEl.offsetHeight, kh = keyEl.offsetHeight, gap = 14;
+  const at = (x, y, k) => `translate(${x}px, ${y}px) scale(${k})`;
+  const [bw, bs, be, bn] = cfg.panelBox, a = map.project([bw, bs]), b = map.project([be, bn]);
+  const k = Math.min((b.x - a.x) / W0, (a.y - b.y) / (th + gap + kh));   // as big as fits, both ways
+  keyEl.style.transform = at(a.x, a.y - kh * k, k);
+  titleEl.style.transform = at(a.x, a.y - (kh + gap + th) * k, k);
+};
+map.on('move', placePanels); addEventListener('resize', placePanels); placePanels();
 window.__map = map;
 map.on('styleimagemissing', () => {}); // images are added below
 map.on('style.load', () => addImages(map, c, { bumpSize: state.water.bumpSize ?? 0.45 }));
@@ -166,11 +217,10 @@ map.on('zoom', showZoom); showZoom();
 
 // --- editor chrome: name, preview, collapse
 $('ed-name').textContent = `${cfg.name} ${cfg.subtitle || ''}`.trim();
-$('preview').addEventListener('click', () => window.open(`${location.pathname}?place=${place}&preview${location.hash}`, '_blank'));
+$('preview').addEventListener('click', () => window.open(`${location.pathname}?place=${place}&preview#${map.getZoom().toFixed(2)}/${map.getCenter().lat.toFixed(5)}/${map.getCenter().lng.toFixed(5)}`, '_blank'));
 $('ed-collapse').addEventListener('click', () => setCollapsed(true));
-const floatKey = 'trail-cartography:editor-float';
-const setFloat = (on) => { document.body.classList.toggle('ed-float', on); try { localStorage.setItem(floatKey, on ? '1' : ''); } catch {} map.resize(); };
-setFloat((() => { try { return !!localStorage.getItem(floatKey); } catch { return false; } })());
+const setFloat = (on) => { document.body.classList.toggle('ed-float', on); map.resize(); };
+setFloat(false);
 $('ed-float').addEventListener('click', () => setFloat(!document.body.classList.contains('ed-float')));
 $('ed-open').addEventListener('click', () => setCollapsed(false));
 // legend + panels follow the style preset (bay maps keep their own key)
@@ -281,12 +331,13 @@ document.querySelectorAll('[data-mode]').forEach(b => b.addEventListener('click'
   document.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
   restyle();
   layer.setMode(state.mode);
+  placePanels();
 }));
 $('preset').innerHTML = PRESETS.map(([id, name]) => `<option value="${id}">${name}</option>`).join('');
 $('preset').value = state.preset;
 $('preset').closest('label').hidden = bay;
 $('preset').addEventListener('change', (ev) => {
-  state.preset = ev.target.value; c = PALETTES[state.preset];
+  state.preset = ev.target.value; c = palette(state.preset);
   // NPS maps show relief, not contours
   state.contours = state.preset === 'ecta'; $('contours').checked = state.contours;   // NPS + vegetation: relief, no contours
   savePrefs({ preset: state.preset, contours: state.contours });
@@ -479,10 +530,10 @@ if (bay) {
   // --- routes card: "Create a route" → click stops, see the route and its full length
   const showTrip = (t) => { state.trip = t.geojson; map.getSource('trips')?.setData(t.geojson); };
   const timeFor = (nm) => { const m = Math.round((nm / 3) * 60); return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min` : `${m} min`; };
-  // distance unit: nautical miles by default (the water standard); your choice is remembered, even on the public site
-  let unit = (() => { try { return localStorage.getItem('trail-cartography:unit') || 'nm'; } catch { return 'nm'; } })();
+  // distance unit: nautical miles by default (the water standard)
+  let unit = 'nm';
   document.querySelectorAll('[data-unit]').forEach(b => b.addEventListener('click', () => {
-    unit = b.dataset.unit; try { localStorage.setItem('trail-cartography:unit', unit); } catch {} refresh();
+    unit = b.dataset.unit; refresh();
   }));
   let sel = null;              // 'plan' while creating a route
   let plan = [];
@@ -544,8 +595,7 @@ if (bay) {
     $('flow-toggle').hidden = false;
     // streaks sit above water, ripples and coast, below piers, roads, routes, buoys and every label.
     // No frozen state: shown means moving.
-    const flowKey = 'trail-cartography:flow:v3'; // bump when DEFAULTS change
-    const savedFlow = (() => { try { return JSON.parse(localStorage.getItem(flowKey) || '{}'); } catch { return {}; } })();
+    const savedFlow = {};   // streak tweaks last until reload (use the tuner's Copy to keep them)
     const flow = new FlowLayer(map, flowData, { beforeId: 'road', speedBeforeId: 'depth', params: savedFlow, isWater: router ? (lng, lat) => router.isWater(lng, lat) : null, onTime: (t) => { slider.value = t; label.innerHTML = timeLabel(flowData, t); } });
     slider.max = flowData.times.length - 1;
     flow.setTime(flow.t);
@@ -656,7 +706,7 @@ if (bay) {
         `<label title="${HELP[k] || ''}">${label}<span id="tv-${k}">${flow.p[k]}</span><input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${flow.p[k]}"></label>`).join('');
     };
     render();
-    const persist = () => { try { localStorage.setItem(flowKey, JSON.stringify(flow.p)); } catch {} };
+    const persist = () => {};
     box.addEventListener('input', (ev) => {
       if ('shade' in ev.target.dataset) {
         const v = +ev.target.value; $('tv-waterShade').textContent = v; savePrefs({ waterShade: v });
