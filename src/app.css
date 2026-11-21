@@ -323,3 +323,7 @@ body.preset-veg .sw.trail::after { border-top-color: #2d221c; box-shadow: 0 0 0 
 .ed-back:hover { color: var(--ed-ink); text-decoration: underline; }
 
 .k[hidden] { display: none; }
+
+/* Download PDF button, with the map's zoom buttons */
+.maplibregl-ctrl-group .pdf-btn { width: auto; padding: 0 8px; display: flex; gap: 5px; align-items: center; font: 600 12px/29px "Source Sans 3", system-ui, sans-serif; color: #333; white-space: nowrap; }
+.maplibregl-ctrl-group .pdf-btn:disabled { opacity: 0.8; cursor: progress; }

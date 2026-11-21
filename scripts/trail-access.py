@@ -21,9 +21,10 @@ cfg = json.load(open(f'places/{place}/place.json'))
 # trails that are public even where they cross private land (easements): tagged open in OSM, or listed by name
 # in place.json "publicTrails"
 OPEN = {'yes', 'designated', 'permissive'}
+# entries are trail names ("Big Rock Trail") or OSM ids ("way/137221822") for unnamed pieces
 public_names = set(cfg.get('publicTrails', []))
 def is_public_way(p):
-    return p.get('foot') in OPEN or p.get('access') in OPEN or p.get('name') in public_names
+    return p.get('foot') in OPEN or p.get('access') in OPEN or p.get('name') in public_names or p.get('_id') in public_names
 osm = json.load(open(f'{base}/osm.geojson'))['features']
 cpad = json.load(open(f'{base}/cpad.geojson'))['features']
 

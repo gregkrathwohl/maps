@@ -1,3 +1,4 @@
+import { OFFSETS as PEAK_OFFSETS } from './peaks.js';
 // Builds a MapLibre style in the Ipswich-guide look from:
 //   - our own OSM extract (GeoJSON, any zoom we like)
 //   - OpenFreeMap vector tiles (ocean/bay water polygons only)
@@ -13,7 +14,11 @@ const FONT = { regular: ['Noto Sans Regular'], italic: ['Noto Sans Italic'], bol
 export const vegOpacity = ({ opacity = 1, fade = 0 }) =>
   ['interpolate', ['linear'], ['zoom'], 12, opacity * (1 - fade), 14, opacity];
 
-export function buildStyle({ access = null, printBorder = false, ripples = null, c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, blender = true, preset = 'ecta', shade = null, water = {}, handNames = [] }) {
+// Terrain detail: the DEM tiles are 256 px; telling MapLibre they are smaller makes it load finer zooms
+// for the same view (sharper shading, more downloads), larger makes it load coarser ones.
+const DEM_TILE = { vcoarse: 1024, coarse: 1024, normal: 256, sharp: 128, extra: 64 };
+const DEM_MAXZOOM = { vcoarse: 11 };   // very coarse: also never load anything finer than zoom 11
+export function buildStyle({ access = null, printBorder = false, ripples = null, c, osm, mask, contourTiles, mode = 'web', designZoom = 13.5, hillshade = false, relief = null, veg = null, contours = true, parking = true, terrainDetail = 'normal', blender = true, preset = 'ecta', shade = null, water = {}, handNames = [] }) {
   const paper = mode === 'paper';
 
   // line width / text size that either grows gently (web) or exactly with scale (paper)
@@ -124,11 +129,15 @@ export function buildStyle({ access = null, printBorder = false, ripples = null,
       filter: ['all', hw('service'), ['!=', ['get', 'service'], 'parking_aisle'], ['!', carFree]],
       layout: { 'line-cap': 'round' }, paint: { 'line-color': c.service, 'line-width': W(0.7) } },
     { id: 'road-street', type: 'line', source: 'osm',
-      filter: ['all', hw('residential', 'unclassified', 'living_street', 'tertiary'), ['!', carFree]],
+      filter: ['all', c.throughRoads ? hw('residential', 'living_street') : hw('residential', 'unclassified', 'living_street', 'tertiary'), ['!', carFree]],
       layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': c.street, 'line-width': W(1.2) } },
+    // muted-town maps: neighbourhood streets fade, but the roads you travel by (incl. country roads like
+    // Fairfax-Bolinas Rd, tagged tertiary/unclassified) stay dark, a little thinner than the main roads
     { id: 'road-main', type: 'line', source: 'osm',
-      filter: hw('primary', 'secondary', 'primary_link', 'secondary_link'),
-      layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': c.road, 'line-width': W(1.8) } },
+      filter: c.throughRoads ? ['all', hw('primary', 'secondary', 'primary_link', 'secondary_link', 'tertiary', 'tertiary_link', 'unclassified'), ['!', carFree]]
+        : hw('primary', 'secondary', 'primary_link', 'secondary_link'),
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': c.road, 'line-width': c.throughRoads ? W(1.8, ['match', ['get', 'highway'], ['tertiary', 'tertiary_link', 'unclassified'], 0.7, 1]) : W(1.8) } },
     { id: 'road-highway-casing', type: 'line', source: 'osm',
       filter: hw('motorway', 'trunk', 'motorway_link', 'trunk_link'),
       paint: { 'line-color': c.road, 'line-width': W(3.4) } },
@@ -213,7 +222,12 @@ export function buildStyle({ access = null, printBorder = false, ripples = null,
       paint: { 'text-color': c.inkSoft, 'text-halo-color': c.openSpace, 'text-halo-width': 1.2 } },
     { id: 'peak-label', type: 'symbol', source: 'osm', minzoom: minz(12),
       filter: ['all', ['==', ['get', 'natural'], 'peak'], ['has', 'name'], notHand],
-      layout: { 'text-field': ['get', 'name'], 'text-font': FONT.regular, 'text-size': T(11), 'text-max-width': 5 },
+      // a small summit triangle, the name on whichever side keeps it off the trails (src/peaks.js)
+      layout: { 'text-field': ['get', 'name'], 'text-font': FONT.regular, 'text-size': T(11), 'text-max-width': 5,
+        'icon-image': 'peak-tri', 'icon-size': T(0.42),
+        'text-anchor': ['coalesce', ['get', '_anchor'], 'left'],
+        'text-offset': ['match', ['coalesce', ['get', '_anchor'], 'left'],
+          ...Object.entries(PEAK_OFFSETS).flatMap(([a, o]) => [a, ['literal', o]]), ['literal', PEAK_OFFSETS.left]] },
       paint: { 'text-color': c.ink } },
     // towns from OSM (hand labels of the same name win). Paper mode prints them at a fixed size like
     // everything else (a city ~80 px at the design zoom, so still legible across the whole region); web mode
@@ -240,6 +254,7 @@ export function buildStyle({ access = null, printBorder = false, ripples = null,
         'icon-allow-overlap': false, 'icon-padding': 24, 'symbol-sort-key': ['-', 0, ['to-number', ['get', 'capacity'], 0]] } },
   ];
 
+  if (!parking) layers.splice(layers.findIndex(l => l.id === 'parking'), 1);
   if (preset === 'nps') npsLayers(layers, { c, W, T, minz, hw, carFree, trailFilter, informal, notHand });
   if (preset === 'veg') vegLayers(layers, { c, W, minz, hw, carFree, trailFilter, informal });
   applyShade(layers, shade);
@@ -254,7 +269,7 @@ export function buildStyle({ access = null, printBorder = false, ripples = null,
       mask: { type: 'geojson', data: mask },
       ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet' },
       dem: { type: 'raster-dem', tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-        encoding: 'terrarium', tileSize: 256, maxzoom: 15 },
+        encoding: 'terrarium', tileSize: DEM_TILE[terrainDetail] || 256, maxzoom: DEM_MAXZOOM[terrainDetail] || 15 },
       contours: { type: 'vector', tiles: [contourTiles], maxzoom: 15 },
       ...(veg ? Object.fromEntries(veg.tiles.map(t => [`veg-${t.row}-${t.col}`,
         { type: 'image', url: `${veg.base}/${veg.palette}-${t.row}-${t.col}.webp`, coordinates: t.coordinates }])) : {}),

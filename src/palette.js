@@ -63,7 +63,7 @@ export const vegStyle = {
 };
 // towns pushed back: light grey streets, a faint grey on built-up land, open space a touch stronger
 export const MUTED_TOWNS = {
-  road: '#77746d', street: '#bdbab2', service: '#d6d3cb', building: '#dedbd3',
+  road: '#33312d', street: '#bdbab2', throughRoads: true, service: '#d6d3cb', building: '#dedbd3',
   developed: '#f0efea', openSpace: '#cbd6c3',
 };
 

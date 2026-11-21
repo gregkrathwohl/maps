@@ -5,6 +5,8 @@ import { buildStyle, outsideMask, vegOpacity, SHADE_PRESETS, shadePaint } from '
 import { buildBayStyle } from './bay-style.js';
 import { addImages, waterBumps } from './patterns.js';
 import { LabelLayer, STYLES } from './labels.js';
+import { exportPDF, inlineClone } from './pdf.js';
+import { placePeaks } from './peaks.js';
 import { Router } from './router.js';
 import { resolver, buildTrip, summary, fmtDist, UNITS } from './trips.js';
 import { FlowLayer, timeLabel, DEFAULTS as FLOW_DEFAULTS } from './flow.js';
@@ -98,7 +100,7 @@ const PREVIEW = new URLSearchParams(location.search).has('preview');
 if (PREVIEW) document.body.setAttribute('data-public', '');
 const PUBLIC = document.body.hasAttribute('data-public');
 const EDITOR = !PUBLIC;
-const SAVED_KEYS = ['printBorder', 'preset', 'shade', 'water', 'mode', 'hillshade', 'blender', 'contours', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
+const SAVED_KEYS = ['printBorder', 'preset', 'shade', 'water', 'mode', 'hillshade', 'blender', 'contours', 'terrainDetail', 'veg', 'vegOpacity', 'vegFade', 'waterMode', 'waterShade', 'currents', 'colour'];
 const prefs = { mode: 'web', hillshade: false, waterMode: 'ripples', waterShade: 0, currents: true, colour: false, ...(cfg.defaults || {}) };
 const $ = (id) => document.getElementById(id);
 const status = (t) => { const el = $('ed-status'); if (el) { el.textContent = t; el.classList.toggle('busy', t !== 'Saved'); } };
@@ -121,7 +123,7 @@ const palette = (k) => ({ ...(PALETTES[k] || PALETTES.ecta), ...(cfg.towns === '
 let c = palette(prefs.preset);
 const SHADE_DEFAULT = { method: 'multidirectional', exaggeration: 0.35, direction: 315, altitude: 45, shadow: '#5d6b5a',
   highlight: '#ffffff', highlightOpacity: 1, accent: '#8a8a7a', land: null, contour: null, contourOpacity: 0.6 };
-const state = { printBorder: !!prefs.printBorder, water: { texture: 'bumps', strength: 0.05, bumpSize: 0.45, depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
+const state = { printBorder: !!prefs.printBorder, terrainDetail: prefs.terrainDetail || 'normal', water: { texture: 'bumps', strength: 0.05, bumpSize: 0.45, depth: false, isobaths: false, ...(prefs.water || {}) }, shade: { preset: 'style', ...SHADE_DEFAULT, ...(prefs.shade || {}) }, preset: PALETTES[prefs.preset] ? prefs.preset : 'ecta', mode: prefs.mode, hillshade: prefs.hillshade, waterMode: prefs.waterMode, trip: empty,
   blender: !!cfg.relief && prefs.blender !== false, veg: prefs.veg && prefs.veg !== 'off' ? prefs.veg : 'autumn',
   // contours were turned off for the vegetation; if the vegetation can't show (public build), bring them back
   contours: prefs.contours ?? (!prefs.preset || prefs.preset === 'ecta'),
@@ -144,12 +146,14 @@ $('print-border').addEventListener('change', (ev) => {
   if (map.getLayer('print-border')) map.setLayoutProperty('print-border', 'visibility', state.printBorder ? 'visible' : 'none');
 });
 // OSM labels to suppress: anything a hand label already covers (or says it replaces)
-const handNamesOf = () => labels.flatMap(l => [l.text.replace(/\n/g, ' '), ...(l.replaces ? [l.replaces] : [])]);
+// ("keepOsm": a ridge or area label that shares its name with a summit leaves the summit's own label alone)
+const handNamesOf = () => labels.flatMap(l => [...(l.keepOsm ? [] : [l.text.replace(/\n/g, ' ')]), ...(l.replaces ? [l.replaces] : [])]);
 let handNames = handNamesOf();
+if (!bay) placePeaks(osm.features, designZoom);
 const style = () => (bay ? buildBayStyle : buildStyle)({ printBorder: state.printBorder, c: bay ? undefined : c, osm, access: trailAccess.features.length ? trailAccess : null, mask, currents, routes, aton, coastLines,
   ripples, trips: state.trip, waterMode: state.waterMode, waterShade: prefs.waterShade,
   contourTiles: contourTiles(state.mode), mode: state.mode, designZoom, hillshade: state.hillshade,
-  relief, blender: state.blender, handNames, contours: state.contours, preset: state.preset, shade: state.shade, water: state.water,
+  relief, blender: state.blender, handNames, contours: state.contours, parking: cfg.parking !== false, terrainDetail: state.terrainDetail, preset: state.preset, shade: state.shade, water: state.water,
   // the painterly vegetation is its own map style (it clashes with ECTA's red trails)
   veg: vegIndex && state.preset === 'veg' ? { tiles: vegIndex.tiles, base: vegBase, palette: state.veg, opacity: state.vegOpacity, fade: state.vegFade } : null });
 
@@ -184,6 +188,7 @@ if (cfg.panels === 'bottom-left') {
   stack(); addEventListener('resize', stack);
 }
 if (trailAccess.features.length) document.getElementById('k-access').hidden = false;
+if (cfg.parking === false) document.querySelector('.key .sw.p')?.closest('.k')?.setAttribute('hidden', '');
 
 // Paper mode on a map with a print layout (place.json "panelBox": [west, south, east, north], a stretch of open
 // water inset from the page's corner): the title and legend are part of the print, stacked title over legend and
@@ -207,6 +212,58 @@ map.on('styleimagemissing', () => {}); // images are added below
 map.on('style.load', () => addImages(map, c, { bumpSize: state.water.bumpSize ?? 0.45 }));
 map.addControl(new maplibregl.ScaleControl({ unit: 'imperial', maxWidth: 160 }), 'bottom-right');
 map.addControl(new maplibregl.NavigationControl({ visualizePitch: false }), 'bottom-right');
+
+// Download PDF (trail maps): the whole sheet in paper mode at the native zoom, at print resolution
+if (!bay) {
+  const btn = document.createElement('button');
+  btn.className = 'pdf-btn'; btn.type = 'button'; btn.title = 'Download the whole map as a print-resolution PDF';
+  btn.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14"><path d="M8 2v8M4.5 6.5 8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>PDF</span>';
+  map.addControl({ onAdd: () => { const d = document.createElement('div'); d.className = 'maplibregl-ctrl maplibregl-ctrl-group'; d.appendChild(btn); return d; }, onRemove: () => {} }, 'bottom-right');
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true;
+    const label = btn.querySelector('span'), was = state.mode;
+    try {
+      state.mode = 'paper'; const st = style(); state.mode = was;
+      // the sheet is all inside the page: no outside wash, print border or page edge
+      st.layers = st.layers.filter(l => !['outside', 'print-border', 'page-edge'].includes(l.id));
+      // the title and legend laid out as they are on the paper sheet
+      const hadPaper = document.body.classList.contains('panels-paper');
+      document.body.classList.add('panels-paper');
+      const overlays = (g) => {
+        const out = [], W0 = Math.max(titleEl.offsetWidth, keyEl.offsetWidth), th = titleEl.offsetHeight, kh = keyEl.offsetHeight, gap = 14;
+        let x, y, k;
+        if (cfg.panelBox) {
+          const [bw, bs, be, bn] = cfg.panelBox, a = g.px(bw, bs), b = g.px(be, bn);
+          k = Math.min((b[0] - a[0]) / W0, (a[1] - b[1]) / (th + gap + kh)); x = a[0]; y = a[1];
+        } else { k = 1; x = 24; y = g.H - 24; }
+        out.push({ el: inlineClone(titleEl), transform: `translate(${x}px,${y - (kh + gap + th) * k}px) scale(${k})`, w: titleEl.offsetWidth });
+        out.push({ el: inlineClone(keyEl), transform: `translate(${x}px,${y - kh * k}px) scale(${k})`, w: keyEl.offsetWidth });
+        // hand-placed labels at their paper size (1:1 at the native zoom)
+        const tmp = document.createElement('div'); tmp.style.cssText = 'position:fixed;left:-99999px;top:0';
+        document.body.appendChild(tmp);
+        for (const l of labels) {
+          const el = document.createElement('div'); el.className = 'hand-label'; tmp.appendChild(el);
+          LabelLayer.prototype.paint.call(layer, el, l);
+          el.style.fontSize = `${l.size || 13}px`;
+          if (el.classList.contains('locator')) el.style.width = el.style.height = `${(l.size || 13) * 1.7}px`;
+          const [px, py] = g.px(l.at[0], l.at[1]);
+          out.push({ el: inlineClone(el), transform: `translate(${px}px,${py}px) rotate(${l.rotate || 0}deg) translate(-50%,-50%)` });
+        }
+        tmp.remove();
+        return out;
+      };
+      const res = await exportPDF({
+        style: st, bbox: cfg.bbox, designZoom, overlays,
+        addImages: (m) => addImages(m, c, { bumpSize: state.water.bumpSize ?? 0.45 }),
+        onProgress: (t) => { label.textContent = t; },
+        filename: `${place}.pdf`,
+      }).finally(() => { if (!hadPaper) document.body.classList.remove('panels-paper'); });
+      console.log('PDF', res);
+    } catch (err) { console.error(err); alert(`PDF failed: ${err.message}`); }
+    finally { state.mode = was; label.textContent = 'PDF'; btn.disabled = false; }
+  });
+}
 map.addControl(new maplibregl.AttributionControl({ compact: true, customAttribution: '© OpenStreetMap contributors' }));
 // start the attribution collapsed to its ⓘ button (MapLibre opens it on wide screens)
 map.once('load', () => document.querySelectorAll('.maplibregl-ctrl-attrib').forEach(el => { el.classList.remove('maplibregl-compact-show'); el.removeAttribute('open'); }));
@@ -347,6 +404,8 @@ $('preset').addEventListener('change', (ev) => {
 });
 $('blender').closest('label').hidden = !relief;
 $('contours').checked = state.contours;
+$('terrain-detail').value = state.terrainDetail;
+$('terrain-detail').addEventListener('change', (ev) => { state.terrainDetail = ev.target.value; savePrefs({ terrainDetail: state.terrainDetail }); restyle(); });
 // advanced hillshade: presets fill the fields; touching any field makes it "Custom". Applied live.
 const shadeRows = () => {
   const s = state.shade;

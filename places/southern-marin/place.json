@@ -28,12 +28,27 @@
     "preset": "ecta",
     "water": {
       "texture": "bumps",
-      "strength": 0.06,
+      "strength": 0.04,
       "bumpSize": 0.45,
-      "depth": false,
+      "depth": true,
       "isobaths": false
     },
-    "printBorder": true
+    "printBorder": true,
+    "shade": {
+      "preset": "custom",
+      "method": "standard",
+      "exaggeration": 0.33,
+      "direction": 300,
+      "altitude": 25,
+      "shadow": "#2a2a2a",
+      "highlight": "#ffffff",
+      "highlightOpacity": 0.74,
+      "accent": "#3a3a3a",
+      "land": "#d7e5cd",
+      "contour": null,
+      "contourOpacity": null
+    },
+    "terrainDetail": "normal"
   },
   "org": "",
   "extent": "bbox",
@@ -66,7 +81,10 @@
   "publicTrails": [
     "Big Rock Ridge Fire Road",
     "Loma Alta Fire Road",
-    "Loma Alta Fire Road(N)/Sunrise Fire Road(S)"
+    "Loma Alta Fire Road(N)/Sunrise Fire Road(S)",
+    "Big Rock Trail",
+    "680 Trail",
+    "way/137221822"
   ],
   "water": {
     "cell": 10,
@@ -94,5 +112,6 @@
         37.865
       ]
     ]
-  }
+  },
+  "parking": false
 }

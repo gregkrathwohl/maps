@@ -11,6 +11,10 @@ export const STYLES = {
   area:     { font: '"Source Sans 3", Helvetica, Arial, sans-serif', color: '#1f1f1f', weight: 500 },
   feature:  { font: '"Source Sans 3", Helvetica, Arial, sans-serif', color: '#1f1f1f', weight: 400 },
   town:     { font: '"Source Sans 3", Helvetica, Arial, sans-serif', color: '#8d918a', weight: 700, caps: true, spacing: 0.14 },
+  // big geographic names across a whole area: parks and preserves in spaced green capitals,
+  // landforms (ridges) in spaced italic serif capitals, angled along the ridge
+  region:   { font: '"Source Sans 3", Helvetica, Arial, sans-serif', color: '#56704c', weight: 700, caps: true, spacing: 0.3 },
+  ridge:    { font: '"EB Garamond", Georgia, serif', italic: true, color: '#7a6650', weight: 500, caps: true, spacing: 0.4 },
   locator:  { locator: true },
 };
 

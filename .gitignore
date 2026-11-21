@@ -15,3 +15,4 @@ experiments/vegetation/*.npy
 experiments/vegetation/*.png
 !experiments/vegetation/v3-closeup.png
 !experiments/vegetation/v3-closer.png
+exports/

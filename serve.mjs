@@ -69,6 +69,20 @@ http.createServer((req, res) => {
     return;
   }
 
+  // POST /api/export/<place> (dev): a PDF from the map's Download PDF button, saved to exports/<place>.pdf
+  const xm = req.method === 'POST' && url.pathname.match(/^\/api\/export\/([\w-]+)$/);
+  if (xm) {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      fs.mkdirSync(path.join(root, 'exports'), { recursive: true });
+      const out = path.join(root, 'exports', `${xm[1]}.pdf`);
+      fs.writeFileSync(out, Buffer.concat(chunks));
+      res.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ saved: out }));
+    });
+    return;
+  }
+
   // POST /api/settings/<place> {defaults} — the editor's autosave: merged into place.json
   const sm = req.method === 'POST' && url.pathname.match(/^\/api\/settings\/([\w-]+)$/);
   if (sm) {

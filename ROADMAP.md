@@ -222,6 +222,20 @@ show the data in an ugly way; the point is the same truth, drawn beautifully.
 5. **One-click:** the scripts above + render + publish as one pipeline (local first,
    GitHub Actions later) so a new place is: bbox → name → hand labels → done.
 
+## Print PDFs: raster now, vector later (Greg, 2026-11-20)
+
+Today the map's **Download PDF** button (src/pdf.js) is raster: MapLibre draws the sheet with the GPU (WebGL) in
+tiles at the native paper zoom × 2, the pixels go straight into the PDF as JPEGs (one rasterization, no second
+pass). Sharp at any real print size; soft only if you zoom far into the PDF on screen.
+
+Come back to: **a hybrid vector PDF** for really polished prints and hand-finishing in Illustrator.
+- Raster underneath: hillshade, land/water fills, contours (dense; as vectors they'd make Illustrator crawl).
+- Vector on top: trails, roads, all text with embedded fonts: razor-sharp when zoomed, editable by hand.
+- Cost: MapLibre has no vector export, so we'd redraw OSM features into the PDF ourselves, matching the style
+  (widths, dashes, colours, label positions; MapLibre's placed labels can be read back with queryRenderedFeatures).
+- Bigger question it raises: how much control needs a real vector editing tool vs. staying in MapLibre. So far
+  MapLibre + hand labels (rotation, spacing, region/ridge styles) covers it.
+
 ## Ideas parking lot
 
 - Ipswich-style "town map with trail systems sprinkled around it" (multiple park boundaries).
