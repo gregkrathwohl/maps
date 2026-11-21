@@ -1,0 +1,195 @@
+[
+ {
+  "text": "RICHARDSON\nBAY",
+  "style": "ocean",
+  "size": 26,
+  "at": [
+   -122.4855,
+   37.8735
+  ],
+  "rotate": -32
+ },
+ {
+  "text": "SAN FRANCISCO BAY",
+  "style": "ocean",
+  "size": 22,
+  "at": [
+   -122.4495,
+   37.8445
+  ]
+ },
+ {
+  "text": "Raccoon Strait",
+  "style": "water",
+  "size": 17,
+  "at": [
+   -122.4445,
+   37.8722
+  ],
+  "rotate": -27,
+  "spacing": 0.14
+ },
+ {
+  "text": "Belvedere\nCove",
+  "style": "water",
+  "size": 11,
+  "at": [
+   -122.4575,
+   37.8682
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "ANGEL ISLAND",
+  "style": "town",
+  "size": 17,
+  "at": [
+   -122.43,
+   37.8578
+  ],
+  "spacing": 0.2,
+  "replaces": "Mount Caroline Livermore"
+ },
+ {
+  "text": "SAUSALITO",
+  "style": "town",
+  "size": 18,
+  "at": [
+   -122.4895,
+   37.8565
+  ]
+ },
+ {
+  "text": "TIBURON",
+  "style": "town",
+  "size": 18,
+  "at": [
+   -122.4575,
+   37.8818
+  ]
+ },
+ {
+  "text": "BELVEDERE",
+  "style": "town",
+  "size": 13,
+  "at": [
+   -122.4655,
+   37.8715
+  ]
+ },
+ {
+  "text": "MILL VALLEY",
+  "style": "town",
+  "size": 15,
+  "at": [
+   -122.5135,
+   37.8905
+  ]
+ },
+ {
+  "text": "Strawberry\nPoint",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.5055,
+   37.8835
+  ]
+ },
+ {
+  "text": "Point\nStuart",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4495,
+   37.8612
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "Point\nBlunt",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.417,
+   37.8525
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "Yellow\nBluff",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4752,
+   37.8372
+  ]
+ },
+ {
+  "text": "Point\nDiablo",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.5005,
+   37.8215
+  ]
+ },
+ {
+  "text": "Point\nCavallo",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4705,
+   37.8318
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "Alcatraz",
+  "style": "feature",
+  "size": 12,
+  "at": [
+   -122.4229,
+   37.8292
+  ]
+ },
+ {
+  "text": "Crissy Field",
+  "style": "feature",
+  "size": 11,
+  "at": [
+   -122.4655,
+   37.8038
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "Fort\nPoint",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4782,
+   37.8098
+  ],
+  "minzoom": 13
+ },
+ {
+  "text": "Fort Mason",
+  "style": "feature",
+  "size": 10,
+  "at": [
+   -122.4315,
+   37.8052
+  ],
+  "minzoom": 13.5
+ },
+ {
+  "text": "Aquatic\nPark",
+  "style": "water",
+  "size": 10,
+  "at": [
+   -122.4222,
+   37.809
+  ],
+  "minzoom": 13.5
+ }
+]

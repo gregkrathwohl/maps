@@ -1,0 +1,117 @@
+{
+  "name": "Southern Marin",
+  "title": "Southern Marin",
+  "subtitle": "Trails Guide",
+  "draft": false,
+  "created": "2026-11-20",
+  "bbox": [
+    -122.8,
+    37.8,
+    -122.41,
+    38.075
+  ],
+  "center": [
+    -122.605,
+    37.945
+  ],
+  "zoom": 11,
+  "areas": [],
+  "boundaries": [],
+  "defaults": {
+    "mode": "paper",
+    "hillshade": true,
+    "contours": true,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false,
+    "preset": "ecta",
+    "water": {
+      "texture": "bumps",
+      "strength": 0.04,
+      "bumpSize": 0.45,
+      "depth": true,
+      "isobaths": false
+    },
+    "printBorder": true,
+    "shade": {
+      "preset": "custom",
+      "method": "standard",
+      "exaggeration": 0.33,
+      "direction": 300,
+      "altitude": 25,
+      "shadow": "#2a2a2a",
+      "highlight": "#ffffff",
+      "highlightOpacity": 0.74,
+      "accent": "#3a3a3a",
+      "land": "#d7e5cd",
+      "contour": null,
+      "contourOpacity": null
+    },
+    "terrainDetail": "normal"
+  },
+  "org": "",
+  "extent": "bbox",
+  "buildings": false,
+  "fetchGrid": 4,
+  "designZoom": 13.5,
+  "towns": "muted",
+  "townNames": [
+    "Bolinas",
+    "Stinson Beach",
+    "Muir Beach",
+    "Marin City",
+    "Lagunitas",
+    "Woodacre",
+    "Olema",
+    "Nicasio",
+    "Terra Linda",
+    "Lucas Valley",
+    "Sleepy Hollow",
+    "Tamalpais Valley"
+  ],
+  "panels": "bottom-left",
+  "margin": 0.04,
+  "panelBox": [
+    -122.788,
+    37.812,
+    -122.705,
+    37.884
+  ],
+  "publicTrails": [
+    "Big Rock Ridge Fire Road",
+    "Loma Alta Fire Road",
+    "Loma Alta Fire Road(N)/Sunrise Fire Road(S)",
+    "Big Rock Trail",
+    "680 Trail",
+    "way/137221822"
+  ],
+  "water": {
+    "cell": 10,
+    "ripples": [
+      25,
+      60,
+      110,
+      180
+    ],
+    "seeds": [
+      [
+        -122.75,
+        37.85
+      ],
+      [
+        -122.43,
+        37.9
+      ],
+      [
+        -122.47,
+        38.06
+      ],
+      [
+        -122.49,
+        37.865
+      ]
+    ]
+  },
+  "parking": false
+}

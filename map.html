@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trails Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,500;0,600;1,500&family=Source+Sans+3:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/maplibre-gl/maplibre-gl.css">
+<link rel="stylesheet" href="src/app.css">
+<script type="importmap">
+{ "imports": {
+  "maplibre-gl": "./vendor/maplibre-gl/maplibre-gl.mjs",
+  "maplibre-contour": "./vendor/maplibre-contour/index.mjs"
+} }
+</script>
+</head>
+<body data-public>
+<div id="map"></div>
+
+<aside class="title-panel">
+  <div class="org" id="org"></div>
+  <h1 id="title"></h1>
+  <div class="subtitle" id="subtitle"></div>
+  <ol class="areas" id="areas"></ol>
+</aside>
+
+<aside class="key">
+  <div class="k"><i class="sw trail"></i>Trail / fire road</div>
+  <div class="k"><i class="sw trail dashed"></i>Informal / closed trail</div>
+  <div class="k" id="k-access" hidden><i class="sw trail faded"></i>Trail crossing private land</div>
+  <div class="k"><i class="sw road"></i>Road</div>
+  <div class="k"><i class="sw street"></i>Park road</div>
+  <div class="k"><i class="sw fill os"></i>Park land</div>
+  <div class="k"><i class="sw fill beach"></i>Beach</div>
+  <div class="k"><i class="sw fill marsh"></i>Wetland</div>
+  <div class="k"><i class="sw contour"></i>Contour, 20 ft</div>
+  <div class="k"><i class="sw p">P</i>Parking</div>
+  <div class="k"><i class="sw loc">3</i>Trail area</div>
+  <p class="src">Data: OpenStreetMap contributors, OpenFreeMap, Mapzen/AWS Terrain Tiles. Style after the ECTA Ipswich Trails Guide (CCGIS).</p>
+</aside>
+
+<aside class="editor dev-only" id="editor" aria-label="Map editor">
+  <header class="ed-head">
+    <div class="ed-name"><small><a href="/library.html" class="ed-back">← Library</a> · Editing</small><b id="ed-name"></b></div>
+    <button id="ed-float" class="ed-icon" title="Float over the map / dock beside it" aria-label="Toggle floating sidebar">
+      <svg viewBox="0 0 16 16" width="16" height="16"><rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M10 3v10" stroke="currentColor" stroke-width="1.4"/></svg></button>
+    <button id="ed-collapse" class="ed-icon" title="Hide editor" aria-label="Hide editor">
+      <svg viewBox="0 0 16 16" width="16" height="16"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+  </header>
+  <div class="ed-actions">
+    <span id="ed-status" class="ed-status">Saved</span>
+    <span id="zoom" class="ed-zoom"></span>
+    <button id="preview" class="btn primary">Preview
+      <svg viewBox="0 0 16 16" width="13" height="13"><path d="M6 3h7v7M13 3L5 11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  </div>
+
+  <div class="ed-body">
+    <section class="ed-sec">
+      <h3>View</h3>
+      <label class="field row">Map style <select id="preset"></select></label>
+      <div class="field row"><span class="lbl">Zoom behaviour
+        <span class="tip" tabindex="0" aria-label="About zoom behaviour">
+          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M8 7.2v3.6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="8" cy="4.9" r=".9" fill="currentColor"/></svg>
+          <span class="tip-body" role="tooltip">
+            <b>Paper</b> Everything scales together, like a printed sheet: lines, labels and detail grow as you zoom in.
+            <b>Web</b> Lines and labels stay the same size on screen; detail thins out as you zoom out.
+          </span></span></span>
+        <div class="seg" role="group" aria-label="Zoom behaviour">
+          <button data-mode="web" class="on" title="Like an online map: lines and labels keep their screen size, detail thins out as you zoom out">Web</button>
+          <button data-mode="paper" title="Like a printed sheet: everything scales together, all detail stays">Paper</button>
+        </div></div>
+    </section>
+
+    <section class="ed-sec">
+      <h3>Terrain</h3>
+      <label class="tg">Hillshade <input type="checkbox" id="hillshade" role="switch"></label>
+      <label class="field row" title="How fine an elevation grid the hillshade uses at each zoom">Terrain detail <select id="terrain-detail">
+        <option value="vcoarse">Very coarse</option><option value="coarse">Coarse</option><option value="normal">Normal</option><option value="sharp">Sharp</option><option value="extra">Extra sharp</option></select></label>
+      <label class="tg" title="Paper mode: blank white paper beyond the page edge">Print border <input type="checkbox" id="print-border" role="switch"></label>
+      <details class="ed-more" id="shade-adv">
+        <summary>Advanced hillshade</summary>
+        <label class="field row">Look <select id="sh-preset">
+          <option value="style">Map style default</option><option value="google">Google-like terrain</option>
+          <option value="dramatic">Dramatic</option><option value="soft">Soft (Igor)</option><option value="custom">Custom</option>
+        </select></label>
+        <div class="field row"><span class="hint">Back to what the map style does</span><button id="sh-reset" class="btn">Reset</button></div>
+        <p class="hint" id="sh-note" hidden>The Blender relief is on, so this hillshade is hidden. Turn Blender off to see it.</p>
+        <div id="sh-fields" class="ed-group">
+          <label class="field row">Method <select data-sh="method">
+            <option value="standard">Standard</option><option value="basic">Basic</option><option value="combined">Combined</option>
+            <option value="igor">Igor (soft)</option><option value="multidirectional">Multidirectional</option></select></label>
+          <label class="field">Strength<span data-v="exaggeration"></span><input type="range" data-sh="exaggeration" min="0" max="1" step="0.01"></label>
+          <label class="field">Sun direction (°)<span data-v="direction"></span><input type="range" data-sh="direction" min="0" max="359" step="1"></label>
+          <label class="field">Sun height (°)<span data-v="altitude"></span><input type="range" data-sh="altitude" min="5" max="90" step="1"></label>
+          <label class="field row">Shadow colour <input type="color" data-sh="shadow"></label>
+          <label class="field row">Highlight colour <input type="color" data-sh="highlight"></label>
+          <label class="field">Highlight strength<span data-v="highlightOpacity"></span><input type="range" data-sh="highlightOpacity" min="0" max="1" step="0.01"></label>
+          <label class="field row">Crease colour <input type="color" data-sh="accent"></label>
+          <label class="tg">Tint the land <input type="checkbox" data-sh-on="land" role="switch"></label>
+          <label class="field row" data-row="land">Land colour <input type="color" data-sh="land"></label>
+          <label class="tg">Recolour contours <input type="checkbox" data-sh-on="contour" role="switch"></label>
+          <label class="field row" data-row="contour">Contour colour <input type="color" data-sh="contour"></label>
+          <label class="field" data-row="contour">Contour opacity<span data-v="contourOpacity"></span><input type="range" data-sh="contourOpacity" min="0" max="1" step="0.01"></label>
+        </div>
+      </details>
+      <label class="tg">Blender relief <input type="checkbox" id="blender" role="switch"></label>
+      <label class="tg">Contours <input type="checkbox" id="contours" role="switch"></label>
+      <details class="ed-more" id="relief-tuner">
+        <summary>Relief look</summary>
+        <div id="rl-look"></div>
+        <h4>Blender bake <small>re-renders, ~40 s quick / 2 min full</small></h4>
+        <div id="rl-bake"></div>
+        <label class="tg">Quick preview (half-res) <input type="checkbox" id="rl-quick" role="switch" checked></label>
+        <div class="field row"><span id="rl-status" class="hint"></span><button id="rl-go" class="btn">Re-bake</button></div>
+      </details>
+    </section>
+
+    <section class="ed-sec" id="veg-sec" hidden>
+      <h3>Vegetation</h3>
+      <div id="veg-controls" class="ed-group">
+        <label class="field row">Season <select id="veg"></select></label>
+        <label class="field">Opacity<span id="veg-opacity-v"></span><input type="range" id="veg-opacity" min="0" max="1" step="0.05"></label>
+        <label class="field">Fade when zoomed out<span id="veg-fade-v"></span><input type="range" id="veg-fade" min="0" max="1" step="0.05"></label>
+      </div>
+      <p class="hint">Drawn from USDA aerial photos (NAIP): downloads the imagery for this map and paints it, about 5–10 minutes.</p>
+      <div class="field row"><span id="veg-status" class="hint"></span><button id="veg-go" class="btn">Generate vegetation</button></div>
+    </section>
+
+    <section class="ed-sec" id="water-sec">
+      <h3 id="water-h">Water</h3>
+      <label class="field row" data-trailwater>Texture <select id="w-texture"><option value="">Plain</option><option value="waves">Waves</option><option value="bumps">Bumpy (lit)</option></select></label>
+      <label class="field" data-bumps>Texture strength<span id="w-strength-v"></span><input type="range" id="w-strength" min="0" max="1" step="0.01"></label>
+      <label class="field" data-bumps>Bump size<span id="w-bump-v"></span><input type="range" id="w-bump" min="0.4" max="3" step="0.05"></label>
+      <label class="tg" data-trailwater>Depth tint <input type="checkbox" id="w-depth" role="switch"></label>
+      <label class="tg" data-trailwater>Depth lines <input type="checkbox" id="w-isobaths" role="switch"></label>
+      <label class="field row" id="water-row" hidden>Water <select id="water-mode" aria-label="Water texture">
+        <option value="ripples">Ripples</option><option value="depth">Depth lines</option><option value="both">Both</option>
+      </select></label>
+      <label class="tg" id="flow-toggle" hidden>Currents <input type="checkbox" id="flow-on" role="switch" checked></label>
+      <label class="tg" id="grid-toggle" hidden>Routing grid <input type="checkbox" id="grid-on" role="switch"></label>
+    </section>
+
+    <section class="ed-sec">
+      <h3>Labels <span class="count" id="label-count" title="Hand-placed labels"></span></h3>
+      <label class="tg">Edit labels on the map <input type="checkbox" id="edit" role="switch"></label>
+      <p class="hint">While on: click any name on the map (a peak, trail, road) to take it over, then drag, resize or rotate it. Alt-click empty map to add a new label.</p>
+      <div class="inspector" id="inspector" hidden>
+        <input id="i-text" aria-label="Label text" placeholder="Label text (\n for a line break)">
+        <label class="field row">Style <select id="i-style"></select></label>
+        <label class="field">Size<input type="range" id="i-size" min="8" max="40" step="0.5"></label>
+        <label class="field">Rotate<input type="range" id="i-rotate" min="-90" max="90" step="1"></label>
+        <label class="field">Letter spacing<input type="range" id="i-spacing" min="0" max="0.6" step="0.01"></label>
+        <label class="field row">Hide below zoom <input type="number" id="i-minzoom" min="0" max="18" step="0.5"></label>
+        <div class="field row"><span></span><button id="i-delete" class="btn danger">Delete label</button></div>
+      </div>
+      <ul class="label-list" id="label-list"></ul>
+      <button id="label-add" class="btn wide">+ Add label at map centre</button>
+    </section>
+  </div>
+</aside>
+<button id="ed-open" class="ed-open dev-only" title="Show editor">Editor</button>
+
+<section class="routes-card" id="routes" hidden>
+  <div class="rt-idle" id="rt-idle">
+    <button class="rt-new" id="rt-new">Create a route</button>
+  </div>
+  <div class="rt-plan" id="rt-plan" hidden>
+    <div class="rt-top"><div class="rt-total" id="pl-total"></div>
+      <div class="rt-units" role="group" aria-label="Units"><button data-unit="nm">nm</button><button data-unit="mi">mi</button></div></div>
+    <p class="hint" id="pl-hint">Click the water to start. Each click adds a stop; legs bend around land.</p>
+    <ol class="rt-legs" id="pl-legs"></ol>
+    <div class="row"><button id="pl-undo">Undo</button><button id="pl-clear">Clear</button><span class="spacer"></span><button id="pl-done" class="primary">Done</button></div>
+  </div>
+</section>
+
+<div class="flow-panel" id="flow-panel" hidden>
+  <div class="flow-track">
+    <input type="range" id="flow-time" min="0" max="1" step="0.05" aria-label="Forecast time">
+    <div class="flow-tide" id="flow-tide" aria-hidden="true"></div>
+    <div class="flow-ticks" id="flow-ticks" aria-hidden="true"></div>
+  </div>
+  <span id="flow-label" class="flow-when"></span>
+  <button id="flow-now" title="Back to the current hour" disabled>Now</button>
+  <label class="dev-only"><input type="checkbox" id="flow-colour"> Colour by speed</label>
+  <button id="flow-tune" class="dev-only">Tune</button>
+</div>
+
+<div class="inspector tuner dev-only" id="tuner" hidden>
+  <b>Current streaks</b>
+  <div id="tuner-sliders"></div>
+  <div class="row"><button id="tuner-copy">Copy settings</button><button id="tuner-reset">Reset</button></div>
+  <pre id="tuner-out" hidden></pre>
+</div>
+
+<script type="module" src="src/main.js"></script>
+</body>
+</html>

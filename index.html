@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Map Library</title>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@500;600&family=Source+Sans+3:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  body { margin: 0; background: #fbfaf6; color: #1f1f1f; font: 15px/1.5 "Source Sans 3", Helvetica, Arial, sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 16px; }
+  h1 { font: 600 36px/1.1 "EB Garamond", Georgia, serif; text-transform: uppercase; letter-spacing: .03em; margin: 0; }
+  .sub { color: #9b2f35; font: 500 18px "EB Garamond", Georgia, serif; text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 28px; }
+  ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+  a { display: block; padding: 14px 16px; border: 1px solid #1f1f1f; outline: .5px solid #1f1f1f; outline-offset: 3px; color: inherit; text-decoration: none; background: #fff; }
+  a:hover { background: #d1d9ca; }
+  b { font: 600 22px "EB Garamond", Georgia, serif; }
+  .meta { color: #666; font-size: 13px; }
+  a.new { display: inline-block; margin: 0 0 18px; padding: 8px 14px; outline: 0; border-radius: 0; font-weight: 600; }
+  .draft { font: 600 11px "Source Sans 3", sans-serif; text-transform: uppercase; letter-spacing: .06em; color: #8a6d1f; background: #f6edd2; padding: 1px 6px; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Map Library</h1>
+  <div class="sub">Trail &amp; water guides</div>
+  
+  <ul id="list"></ul>
+</main>
+<script>
+fetch('places.json').then(r => r.json()).then(list => {
+  document.getElementById('list').innerHTML = list.map(p => `
+    <li><a href="map.html?place=${p.id}">
+      <b>${p.title || p.name}</b> <span class="meta">· ${p.subtitle || ''}</span>${p.draft ? '<span class="draft">Draft</span>' : ''}
+      <div class="meta">${p.org || ''}${p.areas?.length ? ' · ' + p.areas.join(', ') : ''}</div>
+    </a></li>`).join('');
+});
+</script>
+</body>
+</html>

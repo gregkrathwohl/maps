@@ -1,0 +1,75 @@
+[
+ {
+  "text": "MARIN\nHEADLANDS",
+  "style": "region",
+  "size": 56,
+  "at": [
+   -122.53,
+   37.842
+  ],
+  "replaces": "Marin Headlands"
+ },
+ {
+  "text": "MOUNT TAMALPAIS\nSTATE PARK",
+  "style": "region",
+  "size": 48,
+  "at": [
+   -122.593,
+   37.893
+  ],
+  "replaces": "Mount Tamalpais State Park"
+ },
+ {
+  "text": "MT. TAMALPAIS\nWATERSHED",
+  "style": "region",
+  "size": 48,
+  "at": [
+   -122.628,
+   37.959
+  ],
+  "replaces": "Marin Municipal Water District Watershed"
+ },
+ {
+  "text": "CHINA CAMP\nSTATE PARK",
+  "style": "region",
+  "size": 38,
+  "at": [
+   -122.49,
+   37.997
+  ],
+  "replaces": "China Camp State Park"
+ },
+ {
+  "text": "LOMA ALTA",
+  "style": "region",
+  "size": 30,
+  "at": [
+   -122.611,
+   38.013
+  ],
+  "replaces": "Loma Alta Open Space Preserve",
+  "keepOsm": true
+ },
+ {
+  "text": "Bolinas Ridge",
+  "style": "ridge",
+  "size": 52,
+  "at": [
+   -122.723,
+   37.987
+  ],
+  "rotate": 51,
+  "keepOsm": true
+ },
+ {
+  "text": "Big Rock Ridge",
+  "style": "ridge",
+  "size": 42,
+  "at": [
+   -122.607,
+   38.0535
+  ],
+  "rotate": 16,
+  "keepOsm": true
+ }
+]

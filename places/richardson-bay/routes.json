@@ -1,0 +1,28 @@
+{
+ "waypoints": {
+  "schoonmaker": {
+   "name": "Schoonmaker Beach",
+   "kind": "launch",
+   "osm": "Schoonmaker Beach"
+  },
+  "seatrek": {
+   "name": "Sea Trek",
+   "kind": "launch",
+   "osm": "Sea Trek Kayaking"
+  },
+  "swedes": {
+   "name": "Swede's Beach",
+   "kind": "landing",
+   "osm": "Swede's Beach"
+  },
+  "ayala": {
+   "name": "Ayala Cove",
+   "kind": "landing",
+   "at": [
+    -122.435,
+    37.8679
+   ]
+  }
+ },
+ "legs": []
+}
