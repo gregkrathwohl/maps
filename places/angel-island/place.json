@@ -1,0 +1,35 @@
+{
+  "name": "Angel Island State Park",
+  "title": "Angel Island",
+  "subtitle": "Trails Guide",
+  "org": "California State Parks",
+  "bbox": [
+    -122.462,
+    37.846,
+    -122.404,
+    37.88
+  ],
+  "center": [
+    -122.4315,
+    37.8625
+  ],
+  "zoom": 14.4,
+  "areas": [
+    "Ayala Cove (ferry & visitor center)",
+    "Mount Livermore",
+    "Immigration Station",
+    "Camp Reynolds (West Garrison)",
+    "Fort McDowell (East Garrison)"
+  ],
+  "boundaries": [
+    "Angel Island State Park"
+  ],
+  "defaults": {
+    "mode": "paper",
+    "hillshade": true,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false
+  }
+}

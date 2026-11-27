@@ -1,0 +1,66 @@
+{
+  "name": "Marin Headlands",
+  "subtitle": "Trails Guide",
+  "bbox": [
+    -122.6,
+    37.808,
+    -122.465,
+    37.885
+  ],
+  "boundaries": [
+    "Marin Headlands",
+    "Muir Beach (GGNRA)"
+  ],
+  "center": [
+    -122.528,
+    37.845
+  ],
+  "zoom": 13.3,
+  "org": "Golden Gate National Recreation Area",
+  "areas": [
+    "Hawk Hill",
+    "Rodeo Beach & Fort Cronkhite",
+    "Tennessee Valley",
+    "Muir Beach"
+  ],
+  "relief": {
+    "image": "data/relief-grey.png",
+    "bbox": [
+      -122.6,
+      37.808,
+      -122.465,
+      37.885
+    ],
+    "flat": 0.8647,
+    "bake": {
+      "exag": 2,
+      "sunAlt": 35,
+      "sunAz": 315,
+      "sunSoft": 3,
+      "sky": 0.35,
+      "sunEnergy": 3
+    },
+    "look": {
+      "shadow": 0.46,
+      "light": 0.14,
+      "gamma": 0.3,
+      "tint": "#3d4a3a",
+      "opacity": 0.78
+    }
+  },
+  "vegetation": {
+    "index": "data/veg/veg.json"
+  },
+  "defaults": {
+    "veg": "autumn",
+    "vegOpacity": 0.8,
+    "vegFade": 0.2,
+    "hillshade": true,
+    "mode": "paper",
+    "contours": false,
+    "waterMode": "ripples",
+    "waterShade": 0,
+    "currents": true,
+    "colour": false
+  }
+}

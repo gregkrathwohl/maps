@@ -1,0 +1,28 @@
+[
+ {
+  "name": "Swede's \u00b7 R4 \u00b7 Cone Rock \u00b7 G3 \u00b7 YB",
+  "stops": [
+   "osm:Swede's Beach",
+   "aton:Sausalito Channel Light 4",
+   "aton:Cone Rock Light",
+   "aton:Raccoon Strait Lighted Buoy 3",
+   "aton:Yellow Bluff (Hank Easom) racing buoy",
+   "osm:Swede's Beach"
+  ]
+ },
+ {
+  "name": "Around Angel Island from Swede's",
+  "stops": [
+   "osm:Swede's Beach",
+   [
+    -122.433,
+    37.8716
+   ],
+   [
+    -122.4158,
+    37.8625
+   ],
+   "osm:Swede's Beach"
+  ]
+ }
+]

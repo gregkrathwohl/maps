@@ -1,0 +1,74 @@
+{
+ "name": "Richardson Bay",
+ "title": "Richardson Bay",
+ "subtitle": "Paddling Guide",
+ "org": "Sausalito \u00b7 Tiburon \u00b7 Angel Island",
+ "style": "bay",
+ "bbox": [
+  -122.545,
+  37.795,
+  -122.392,
+  37.905
+ ],
+ "center": [
+  -122.462,
+  37.864
+ ],
+ "zoom": 13.6,
+ "boundaries": [
+  "Angel Island State Park",
+  "Marin Headlands"
+ ],
+ "areas": [],
+ "water": {
+  "cell": 6,
+  "ripples": [
+   12,
+   30,
+   55,
+   90
+  ],
+  "seeds": [
+   [
+    -122.44,
+    37.872
+   ],
+   [
+    -122.44,
+    37.845
+   ],
+   [
+    -122.482,
+    37.868
+   ],
+   [
+    -122.47,
+    37.82
+   ],
+   [
+    -122.415,
+    37.815
+   ]
+  ]
+ },
+ "currents": {
+  "cell": 50,
+  "bbox": [
+   -122.55,
+   37.79,
+   -122.385,
+   37.91
+  ]
+ },
+ "defaults": {
+  "mode": "paper",
+  "hillshade": true,
+  "currents": true,
+  "waterMode": "depth",
+  "waterShade": 0.18
+ },
+ "tides": {
+  "station": "9414806",
+  "name": "Sausalito"
+ }
+}
